@@ -109,6 +109,28 @@ class Tagger {
     if (scanExisting) {
       await this.scanExistingTags(cfg);
     }
+
+    // 询问是否处理文档
+    const { processDocs } = await inquirer.prompt([{
+      type: 'confirm',
+      name: 'processDocs',
+      message: '是否立即处理文档打标签？',
+      default: true
+    }]);
+
+    if (processDocs) {
+      const { processMode } = await inquirer.prompt([{
+        type: 'list',
+        name: 'processMode',
+        message: '处理模式：',
+        choices: [
+          { name: '处理所有文档', value: 'all' },
+          { name: '仅处理不包含标签的文档', value: 'untagged' }
+        ]
+      }]);
+      
+      await this.newLabels(processMode === 'all');
+    }
   }
 
   findObsidianVaults() {
@@ -153,7 +175,7 @@ class Tagger {
     console.log(chalk.green(`✅ 已扫描 ${docs.length} 个文档，提取了 ${Object.keys(this.database.data.tags).length} 个标签`));
   }
 
-  async newLabels() {
+  async newLabels(processAll = false) {
     const cfg = this.config.load();
     if (!cfg) {
       console.log(chalk.red('请先运行 /ola 进行配置'));
@@ -163,25 +185,31 @@ class Tagger {
     const scanner = new Scanner(cfg.vaultPath);
     const docs = await scanner.scanFolder(cfg.targetFolder);
     
-    // 筛选未打标的文档
-    const untaggedDocs = docs.filter(doc => {
-      const mtime = Math.floor(doc.mtime / 1000);
-      return !this.database.isDocTagged(doc.relativePath, mtime);
-    });
-
-    if (untaggedDocs.length === 0) {
-      console.log(chalk.green('✅ 所有文档都已打标！'));
-      return;
+    // 筛选文档
+    let targetDocs;
+    if (processAll) {
+      targetDocs = docs;
+      console.log(chalk.blue(`\n处理所有 ${docs.length} 个文档\n`));
+    } else {
+      // 仅筛选未打标的文档
+      targetDocs = docs.filter(doc => {
+        const mtime = Math.floor(doc.mtime / 1000);
+        return !this.database.isDocTagged(doc.relativePath, mtime);
+      });
+      
+      if (targetDocs.length === 0) {
+        console.log(chalk.green('✅ 所有文档都已打标！'));
+        return;
+      }
+      console.log(chalk.blue(`\n发现 ${targetDocs.length} 个未打标文档\n`));
     }
-
-    console.log(chalk.blue(`\n发现 ${untaggedDocs.length} 个未打标文档\n`));
 
     // 这里应该调用 AI 生成标签，但 CLI 版本需要用户自己提供标签
     // 或者集成 OpenAI API
     console.log(chalk.yellow('提示：CLI 版本需要手动指定标签'));
     console.log(chalk.gray('（OpenClaw 集成版本会自动调用 AI 生成标签）\n'));
 
-    for (const doc of untaggedDocs) {
+    for (const doc of targetDocs) {
       const content = scanner.readDoc(doc.fullPath);
       console.log(chalk.cyan(`\n📄 ${doc.relativePath}`));
       console.log(chalk.gray(content.substring(0, 200) + '...\n'));
