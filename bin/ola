@@ -2,13 +2,19 @@
 
 const { program } = require('commander');
 const Tagger = require('../src/index');
+const { Config, Database } = require('../src/config');
+const chalk = require('chalk');
 
 const tagger = new Tagger();
+const config = new Config();
+const database = new Database();
 
 program
   .name('ola')
   .description('AI-powered tagging system for Obsidian notes')
   .version('0.1.0');
+
+// ==================== 用户命令 ====================
 
 program
   .command('/ola', { isDefault: true })
@@ -50,6 +56,111 @@ program
   .description('重置标签数据库，重新配置')
   .action(async () => {
     await tagger.reset();
+  });
+
+// ==================== 调试命令 (内部使用) ====================
+
+program
+  .command('/ola-dev:reset-config')
+  .description('[DEBUG] 仅重置配置，保留数据库')
+  .action(async () => {
+    console.log(chalk.yellow('[DEBUG] 重置配置...'));
+    config.delete();
+    console.log(chalk.green('✅ 配置已重置，数据库保留'));
+    console.log(chalk.gray('提示：运行 ola /ola 重新配置'));
+  });
+
+program
+  .command('/ola-dev:reset-db')
+  .description('[DEBUG] 仅重置数据库，保留配置')
+  .action(async () => {
+    console.log(chalk.yellow('[DEBUG] 重置数据库...'));
+    database.clear();
+    console.log(chalk.green('✅ 数据库已重置，配置保留'));
+  });
+
+program
+  .command('/ola-dev:full-reset')
+  .description('[DEBUG] 完全重置（配置+数据库）')
+  .action(async () => {
+    console.log(chalk.yellow('[DEBUG] 完全重置...'));
+    config.delete();
+    database.clear();
+    console.log(chalk.green('✅ 已完全重置'));
+    console.log(chalk.gray('提示：运行 ola /ola 重新开始'));
+  });
+
+program
+  .command('/ola-dev:show-config')
+  .description('[DEBUG] 显示当前配置')
+  .action(async () => {
+    const cfg = config.load();
+    if (!cfg) {
+      console.log(chalk.yellow('⚠️  没有配置'));
+      return;
+    }
+    console.log(chalk.blue('\n=== 当前配置 ===\n'));
+    console.log(JSON.stringify(cfg, null, 2));
+  });
+
+program
+  .command('/ola-dev:show-db')
+  .description('[DEBUG] 显示标签数据库')
+  .action(async () => {
+    console.log(chalk.blue('\n=== 标签数据库 ===\n'));
+    const tags = database.getAllTags();
+    console.log(`共 ${tags.length} 个标签:\n`);
+    tags.forEach(tag => {
+      const docs = database.getTagDocs(tag);
+      console.log(`${tag}: ${docs.length} 个文档`);
+    });
+  });
+
+program
+  .command('/ola-dev:scan-only')
+  .description('[DEBUG] 仅扫描文档，不打标签')
+  .action(async () => {
+    const cfg = config.load();
+    if (!cfg) {
+      console.log(chalk.red('请先运行 ola /ola 进行配置'));
+      return;
+    }
+    const Scanner = require('../src/scanner');
+    const scanner = new Scanner(cfg.vaultPath);
+    const docs = await scanner.scanFolder(cfg.targetFolder);
+    console.log(chalk.blue(`\n扫描到 ${docs.length} 个文档:\n`));
+    docs.forEach((doc, i) => {
+      console.log(`${i + 1}. ${doc.relativePath}`);
+    });
+  });
+
+program
+  .command('/ola-dev:mock-ai')
+  .description('[DEBUG] 模拟 AI 生成随机标签')
+  .action(async () => {
+    const mockTags = ['#AI', '#笔记', '#Obsidian', '#工作', '#学习', '#灵感', '#项目', '#待办'];
+    const cfg = config.load();
+    if (!cfg) {
+      console.log(chalk.red('请先运行 ola /ola 进行配置'));
+      return;
+    }
+    const Scanner = require('../src/scanner');
+    const scanner = new Scanner(cfg.vaultPath);
+    const docs = await scanner.scanFolder(cfg.targetFolder);
+    
+    console.log(chalk.blue('\n=== 模拟 AI 生成标签 ===\n'));
+    
+    for (const doc of docs.slice(0, 3)) { // 只处理前3个文档用于测试
+      const randomTags = mockTags
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 3 + Math.floor(Math.random() * 3)); // 3-5个随机标签
+      
+      console.log(chalk.cyan(`\n📄 ${doc.relativePath}`));
+      console.log(chalk.gray(`生成标签: ${randomTags.join(' ')}`));
+    }
+    
+    console.log(chalk.yellow('\n⚠️  这是模拟数据，实际未写入文档'));
+    console.log(chalk.gray('提示：使用 ola /ola-new 实际打标签'));
   });
 
 program.parse();
