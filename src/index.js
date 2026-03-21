@@ -36,7 +36,7 @@ class Tagger {
       }]);
 
       if (action === 'exit') {
-        console.log(chalk.green('👋 再见！'));
+        console.log(chalk.blue('Till next time🖖'));
         return;
       }
 
