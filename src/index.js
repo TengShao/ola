@@ -12,33 +12,41 @@ class Tagger {
   }
 
   async mainMenu() {
-    const cfg = this.config.load();
-    
-    if (!cfg) {
-      console.log(chalk.yellow('首次使用，请先进行配置'));
-      await this.firstTimeSetup();
-      return;
-    }
+    while (true) {
+      const cfg = this.config.load();
+      
+      if (!cfg) {
+        console.log(chalk.yellow('首次使用，请先进行配置'));
+        await this.firstTimeSetup();
+        return;
+      }
 
-    const { action } = await inquirer.prompt([{
-      type: 'list',
-      name: 'action',
-      message: '请选择操作：',
-      choices: [
-        { name: '🏷️  给文档打标签 (/ola new)', value: 'new' },
-        { name: '✏️  修改标签 (/ola edit)', value: 'edit' },
-        { name: '📋 查看标签列表 (/ola list)', value: 'list' },
-        { name: '⚙️  修改配置 (/ola config)', value: 'config' },
-        { name: '🔄 重置数据库 (/ola reset)', value: 'reset' }
-      ]
-    }]);
+      const { action } = await inquirer.prompt([{
+        type: 'list',
+        name: 'action',
+        message: '请选择操作：',
+        choices: [
+          { name: '🏷️  给文档打标签 (/ola new)', value: 'new' },
+          { name: '✏️  修改标签 (/ola edit)', value: 'edit' },
+          { name: '📋 查看标签列表 (/ola list)', value: 'list' },
+          { name: '⚙️  修改配置 (/ola config)', value: 'config' },
+          { name: '🔄 重置数据库 (/ola reset)', value: 'reset' },
+          { name: '🚪 退出', value: 'exit' }
+        ]
+      }]);
 
-    switch (action) {
-      case 'new': await this.newLabels(); break;
-      case 'edit': await this.editLabels(); break;
-      case 'list': await this.listLabels(); break;
-      case 'config': await this.configMenu(); break;
-      case 'reset': await this.reset(); break;
+      if (action === 'exit') {
+        console.log(chalk.green('👋 再见！'));
+        return;
+      }
+
+      switch (action) {
+        case 'new': await this.newLabels(); break;
+        case 'edit': await this.editLabels(); break;
+        case 'list': await this.listLabels(); break;
+        case 'config': await this.configMenu(); break;
+        case 'reset': await this.reset(); break;
+      }
     }
   }
 
@@ -238,54 +246,67 @@ class Tagger {
   }
 
   async editLabels() {
-    const tags = this.database.getAllTags();
-    
-    if (tags.length === 0) {
-      console.log(chalk.yellow('标签数据库为空'));
-      return;
-    }
+    while (true) {
+      const tags = this.database.getAllTags();
+      
+      if (tags.length === 0) {
+        console.log(chalk.yellow('标签数据库为空'));
+        return;
+      }
 
-    const choices = tags.map((tag, i) => ({
-      name: `${tag} (${this.database.getTagDocs(tag).length} 个文档)`,
-      value: tag
-    }));
+      const choices = tags.map((tag, i) => ({
+        name: `${tag} (${this.database.getTagDocs(tag).length} 个文档)`,
+        value: tag
+      }));
 
-    const { selectedTag } = await inquirer.prompt([{
-      type: 'list',
-      name: 'selectedTag',
-      message: '选择要修改的标签：',
-      choices
-    }]);
-
-    const { action } = await inquirer.prompt([{
-      type: 'list',
-      name: 'action',
-      message: `对 ${selectedTag} 执行操作：`,
-      choices: [
-        { name: '✏️  重命名', value: 'rename' },
-        { name: '🗑️  删除', value: 'delete' }
-      ]
-    }]);
-
-    if (action === 'rename') {
-      const { newTag } = await inquirer.prompt([{
-        type: 'input',
-        name: 'newTag',
-        message: '输入新标签名：',
-        validate: input => input.startsWith('#') || '标签必须以 # 开头'
+      const { selectedTag } = await inquirer.prompt([{
+        type: 'list',
+        name: 'selectedTag',
+        message: '选择要修改的标签：',
+        choices: [...choices, { name: '↩️  返回', value: 'back' }]
       }]);
 
-      await this.renameTag(selectedTag, newTag);
-    } else {
-      const { confirm } = await inquirer.prompt([{
-        type: 'confirm',
-        name: 'confirm',
-        message: `确定要删除 ${selectedTag} 吗？这将从所有文档中移除该标签。`,
-        default: false
+      if (selectedTag === 'back') {
+        return;
+      }
+
+      const { action } = await inquirer.prompt([{
+        type: 'list',
+        name: 'action',
+        message: `对 ${selectedTag} 执行操作：`,
+        choices: [
+          { name: '✏️  重命名', value: 'rename' },
+          { name: '🗑️  删除', value: 'delete' },
+          { name: '↩️  返回', value: 'back' }
+        ]
       }]);
 
-      if (confirm) {
-        await this.deleteTag(selectedTag);
+      if (action === 'back') {
+        continue;
+      }
+
+      if (action === 'rename') {
+        const { newTag } = await inquirer.prompt([{
+          type: 'input',
+          name: 'newTag',
+          message: '输入新标签名（或按 Ctrl+C 取消）：',
+          validate: input => input.startsWith('#') || '标签必须以 # 开头'
+        }]);
+
+        if (newTag) {
+          await this.renameTag(selectedTag, newTag);
+        }
+      } else {
+        const { confirm } = await inquirer.prompt([{
+          type: 'confirm',
+          name: 'confirm',
+          message: `确定要删除 ${selectedTag} 吗？这将从所有文档中移除该标签。`,
+          default: false
+        }]);
+
+        if (confirm) {
+          await this.deleteTag(selectedTag);
+        }
       }
     }
   }
@@ -332,51 +353,71 @@ class Tagger {
   }
 
   async listLabels() {
-    const tags = this.database.getAllTags();
-    
-    if (tags.length === 0) {
-      console.log(chalk.yellow('标签数据库为空'));
-      return;
-    }
+    while (true) {
+      const tags = this.database.getAllTags();
+      
+      if (tags.length === 0) {
+        console.log(chalk.yellow('标签数据库为空'));
+        return;
+      }
 
-    console.log(chalk.blue('\n=== 所有标签 ===\n'));
-    
-    const choices = tags.map((tag, i) => ({
-      name: `${i + 1}. ${tag} - ${this.database.getTagDocs(tag).length} 个文档`,
-      value: tag
-    }));
+      console.log(chalk.blue('\n=== 所有标签 ===\n'));
+      
+      const choices = tags.map((tag, i) => ({
+        name: `${i + 1}. ${tag} - ${this.database.getTagDocs(tag).length} 个文档`,
+        value: tag
+      }));
 
-    const { selectedTag } = await inquirer.prompt([{
-      type: 'list',
-      name: 'selectedTag',
-      message: '选择标签查看关联文档（或按 Ctrl+C 退出）：',
-      choices: [...choices, { name: '退出', value: null }]
-    }]);
+      const { selectedTag } = await inquirer.prompt([{
+        type: 'list',
+        name: 'selectedTag',
+        message: '选择标签查看关联文档：',
+        choices: [...choices, { name: '↩️  返回', value: 'back' }]
+      }]);
 
-    if (selectedTag) {
-      await this.showTagDocs(selectedTag);
+      if (selectedTag === 'back') {
+        return;
+      }
+
+      const shouldReturn = await this.showTagDocs(selectedTag);
+      if (shouldReturn) {
+        return;
+      }
     }
   }
 
   async showTagDocs(tag) {
-    const docs = this.database.getTagDocs(tag);
-    const cfg = this.config.load();
-    
-    console.log(chalk.blue(`\n=== ${tag} 关联的文档 ===\n`));
-    
-    const choices = docs.map((doc, i) => ({
-      name: `${i + 1}. ${doc.path}`,
-      value: doc.path
-    }));
+    while (true) {
+      const docs = this.database.getTagDocs(tag);
+      const cfg = this.config.load();
+      
+      console.log(chalk.blue(`\n=== ${tag} 关联的文档 ===\n`));
+      
+      const choices = docs.map((doc, i) => ({
+        name: `${i + 1}. ${doc.path}`,
+        value: doc.path
+      }));
 
-    const { selectedDoc } = await inquirer.prompt([{
-      type: 'list',
-      name: 'selectedDoc',
-      message: '选择文档查看内容（或按 Ctrl+C 返回）：',
-      choices: [...choices, { name: '返回', value: null }]
-    }]);
+      const { selectedDoc } = await inquirer.prompt([{
+        type: 'list',
+        name: 'selectedDoc',
+        message: '选择文档查看内容：',
+        choices: [
+          ...choices, 
+          { name: '↩️  返回标签列表', value: 'back' },
+          { name: '🚪 退出', value: 'exit' }
+        ]
+      }]);
 
-    if (selectedDoc) {
+      if (selectedDoc === 'back') {
+        return false; // 返回标签列表，不退出 listLabels
+      }
+      
+      if (selectedDoc === 'exit') {
+        return true; // 完全退出
+      }
+
+      // 查看文档内容
       const scanner = new Scanner(cfg.vaultPath);
       const fullPath = path.join(cfg.vaultPath, selectedDoc);
       const content = scanner.readDoc(fullPath);
@@ -384,35 +425,48 @@ class Tagger {
       console.log(chalk.blue(`\n=== ${selectedDoc} ===\n`));
       console.log(content);
       console.log(chalk.gray('\n--- 文档结束 ---\n'));
+      
+      // 按任意键继续
+      await inquirer.prompt([{
+        type: 'input',
+        name: 'continue',
+        message: '按回车继续...'
+      }]);
     }
   }
 
   async configMenu() {
-    const cfg = this.config.load();
-    
-    console.log(chalk.blue('\n=== 当前配置 ===\n'));
-    console.log(`1. 目标知识库: ${cfg.vaultName}`);
-    console.log(`2. 目标文件夹: ${cfg.targetFolder}`);
-    console.log(`3. 标签位置: ${cfg.labelPosition === 'tail' ? '尾部' : '头部'}`);
+    while (true) {
+      const cfg = this.config.load();
+      
+      console.log(chalk.blue('\n=== 当前配置 ===\n'));
+      console.log(`1. 目标知识库: ${cfg.vaultName}`);
+      console.log(`2. 目标文件夹: ${cfg.targetFolder}`);
+      console.log(`3. 标签位置: ${cfg.labelPosition === 'tail' ? '尾部' : '头部'}`);
 
-    const { choice } = await inquirer.prompt([{
-      type: 'list',
-      name: 'choice',
-      message: '选择要修改的配置：',
-      choices: [
-        { name: '1. 修改目标知识库', value: 1 },
-        { name: '2. 修改目标文件夹', value: 2 },
-        { name: '3. 修改标签位置', value: 3 },
-        { name: '取消', value: null }
-      ]
-    }]);
+      const { choice } = await inquirer.prompt([{
+        type: 'list',
+        name: 'choice',
+        message: '选择要修改的配置：',
+        choices: [
+          { name: '1. 修改目标知识库', value: 1 },
+          { name: '2. 修改目标文件夹', value: 2 },
+          { name: '3. 修改标签位置', value: 3 },
+          { name: '↩️  返回', value: 'back' }
+        ]
+      }]);
 
-    if (choice === 1) {
-      await this.changeVault(cfg);
-    } else if (choice === 2) {
-      await this.changeFolder(cfg);
-    } else if (choice === 3) {
-      await this.changePosition(cfg);
+      if (choice === 'back') {
+        return;
+      }
+
+      if (choice === 1) {
+        await this.changeVault(cfg);
+      } else if (choice === 2) {
+        await this.changeFolder(cfg);
+      } else if (choice === 3) {
+        await this.changePosition(cfg);
+      }
     }
   }
 
@@ -422,8 +476,15 @@ class Tagger {
       type: 'list',
       name: 'vaultIndex',
       message: '选择新的知识库：',
-      choices: vaults.map((v, i) => ({ name: v.name, value: i }))
+      choices: [
+        ...vaults.map((v, i) => ({ name: v.name, value: i })),
+        { name: '↩️  返回', value: 'back' }
+      ]
     }]);
+
+    if (vaultIndex === 'back') {
+      return;
+    }
 
     cfg.vaultPath = vaults[vaultIndex].path;
     cfg.vaultName = vaults[vaultIndex].name;
@@ -442,7 +503,8 @@ class Tagger {
       ...folders.map(f => ({
         name: `${'  '.repeat(f.depth - 1)}${f.chain[f.chain.length - 1]}`,
         value: f.path
-      }))
+      })),
+      { name: '↩️  返回', value: 'back' }
     ];
 
     const { targetFolder } = await inquirer.prompt([{
@@ -451,6 +513,10 @@ class Tagger {
       message: '选择新的目标文件夹：',
       choices: folderChoices
     }]);
+
+    if (targetFolder === 'back') {
+      return;
+    }
 
     cfg.targetFolder = targetFolder;
     this.config.save(cfg);
@@ -465,9 +531,14 @@ class Tagger {
       message: '选择标签位置：',
       choices: [
         { name: '文档尾部', value: 'tail' },
-        { name: '文档头部', value: 'head' }
+        { name: '文档头部', value: 'head' },
+        { name: '↩️  返回', value: 'back' }
       ]
     }]);
+
+    if (labelPosition === 'back') {
+      return;
+    }
 
     cfg.labelPosition = labelPosition;
     this.config.save(cfg);
