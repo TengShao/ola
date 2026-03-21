@@ -1,0 +1,39 @@
+{
+  "name": "obsidian-tagger",
+  "version": "1.0.0",
+  "description": "自动为 Obsidian 文档添加标签，支持标签管理和同步",
+  "main": "src/index.js",
+  "bin": {
+    "obsidian-tagger": "./bin/obsidian-tagger"
+  },
+  "scripts": {
+    "start": "node bin/obsidian-tagger",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "obsidian",
+    "tagger",
+    "markdown",
+    "openclaw",
+    "cli"
+  ],
+  "author": "TengShao",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TengShao/obsidian-tagger.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TengShao/obsidian-tagger/issues"
+  },
+  "homepage": "https://github.com/TengShao/obsidian-tagger#readme",
+  "dependencies": {
+    "commander": "^11.0.0",
+    "chalk": "^4.1.2",
+    "inquirer": "^8.2.6",
+    "glob": "^10.3.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
