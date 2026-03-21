@@ -55,14 +55,30 @@ class Tagger {
 
     // 1. 选择知识库
     const vaults = this.findObsidianVaults();
-    const { vaultIndex } = await inquirer.prompt([{
-      type: 'list',
-      name: 'vaultIndex',
-      message: '选择 Obsidian 知识库：',
-      choices: vaults.map((v, i) => ({ name: v.name, value: i }))
-    }]);
-
-    const selectedVault = vaults[vaultIndex];
+    let selectedVault;
+    
+    if (vaults.length === 0) {
+      console.log(chalk.yellow('未找到 Obsidian 知识库，请手动指定路径'));
+      selectedVault = await this.promptForCustomVault();
+    } else {
+      const vaultChoices = [
+        ...vaults.map((v, i) => ({ name: v.name, value: i })),
+        { name: '↩️  手动指定路径', value: 'custom' }
+      ];
+      
+      const { vaultIndex } = await inquirer.prompt([{
+        type: 'list',
+        name: 'vaultIndex',
+        message: '选择 Obsidian 知识库：',
+        choices: vaultChoices
+      }]);
+      
+      if (vaultIndex === 'custom') {
+        selectedVault = await this.promptForCustomVault();
+      } else {
+        selectedVault = vaults[vaultIndex];
+      }
+    }
 
     // 2. 选择目标文件夹
     const scanner = new Scanner(selectedVault.path);
@@ -143,25 +159,70 @@ class Tagger {
 
   findObsidianVaults() {
     const vaults = [];
-    const iCloudPath = path.join(
-      require('os').homedir(),
-      'Library/Mobile Documents/iCloud~md~obsidian/Documents'
-    );
+    const home = require('os').homedir();
     
-    if (fs.existsSync(iCloudPath)) {
-      const entries = fs.readdirSync(iCloudPath, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          vaults.push({
-            name: entry.name,
-            path: path.join(iCloudPath, entry.name)
-          });
+    // 多个可能的 Obsidian 路径
+    const possiblePaths = [
+      // iCloud (macOS)
+      path.join(home, 'Library/Mobile Documents/iCloud~md~obsidian/Documents'),
+      // 本地 Documents
+      path.join(home, 'Documents/Obsidian'),
+      path.join(home, 'Documents/obsidian'),
+      // Linux 常见路径
+      path.join(home, 'Obsidian'),
+      // Windows 常见路径
+      path.join(home, 'OneDrive/Documents/Obsidian'),
+    ];
+    
+    const seen = new Set();
+    
+    for (const basePath of possiblePaths) {
+      if (fs.existsSync(basePath)) {
+        try {
+          const entries = fs.readdirSync(basePath, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.isDirectory()) {
+              const vaultPath = path.join(basePath, entry.name);
+              // 检查是否是有效的 Obsidian 知识库（有 .obsidian 文件夹）
+              if (fs.existsSync(path.join(vaultPath, '.obsidian'))) {
+                if (!seen.has(vaultPath)) {
+                  seen.add(vaultPath);
+                  vaults.push({
+                    name: entry.name,
+                    path: vaultPath
+                  });
+                }
+              }
+            }
+          }
+        } catch (err) {
+          // 忽略无权限访问的目录
         }
       }
     }
-
-    // 也可以添加其他常见路径...
+    
     return vaults;
+  }
+  
+  async promptForCustomVault() {
+    const { customPath } = await inquirer.prompt([{
+      type: 'input',
+      name: 'customPath',
+      message: '请输入 Obsidian 知识库的完整路径：',
+      validate: (input) => {
+        if (!input.trim()) return '路径不能为空';
+        if (!fs.existsSync(input.trim())) return '路径不存在';
+        if (!fs.existsSync(path.join(input.trim(), '.obsidian'))) {
+          return '该路径不是有效的 Obsidian 知识库（缺少 .obsidian 文件夹）';
+        }
+        return true;
+      }
+    }]);
+    
+    return {
+      name: path.basename(customPath.trim()),
+      path: customPath.trim()
+    };
   }
 
   async scanExistingTags(cfg) {
@@ -472,22 +533,33 @@ class Tagger {
 
   async changeVault(cfg) {
     const vaults = this.findObsidianVaults();
+    let newVault;
+    
+    const vaultChoices = [
+      ...vaults.map((v, i) => ({ name: v.name, value: i })),
+      { name: '📁 手动指定路径', value: 'custom' },
+      { name: '↩️  返回', value: 'back' }
+    ];
+    
     const { vaultIndex } = await inquirer.prompt([{
       type: 'list',
       name: 'vaultIndex',
       message: '选择新的知识库：',
-      choices: [
-        ...vaults.map((v, i) => ({ name: v.name, value: i })),
-        { name: '↩️  返回', value: 'back' }
-      ]
+      choices: vaultChoices
     }]);
 
     if (vaultIndex === 'back') {
       return;
     }
+    
+    if (vaultIndex === 'custom') {
+      newVault = await this.promptForCustomVault();
+    } else {
+      newVault = vaults[vaultIndex];
+    }
 
-    cfg.vaultPath = vaults[vaultIndex].path;
-    cfg.vaultName = vaults[vaultIndex].name;
+    cfg.vaultPath = newVault.path;
+    cfg.vaultName = newVault.name;
     cfg.targetFolder = '/';
     this.config.save(cfg);
 
