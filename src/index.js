@@ -168,6 +168,10 @@ class Tagger {
       }]);
       
       await this.newLabels(processMode === 'all');
+    } else {
+      // 用户选择不处理，返回主菜单
+      console.log(chalk.blue('\n返回主菜单...'));
+      await this.mainMenu();
     }
   }
 
@@ -219,24 +223,36 @@ class Tagger {
   }
   
   async promptForCustomVault() {
-    const { customPath } = await inquirer.prompt([{
-      type: 'input',
-      name: 'customPath',
-      message: '请输入 Obsidian 知识库的完整路径：',
-      validate: (input) => {
-        if (!input.trim()) return '路径不能为空';
-        if (!fs.existsSync(input.trim())) return '路径不存在';
-        if (!fs.existsSync(path.join(input.trim(), '.obsidian'))) {
-          return '该路径不是有效的 Obsidian 知识库（缺少 .obsidian 文件夹）';
-        }
-        return true;
+    while (true) {
+      const { customPath } = await inquirer.prompt([{
+        type: 'input',
+        name: 'customPath',
+        message: '请输入 Obsidian 知识库的完整路径：'
+      }]);
+      
+      const trimmedPath = customPath.trim();
+      
+      if (!trimmedPath) {
+        console.log(chalk.red('❗️ 路径不能为空'));
+      } else if (!fs.existsSync(trimmedPath)) {
+        console.log(chalk.red('❗️ 路径不存在'));
+      } else if (!fs.existsSync(path.join(trimmedPath, '.obsidian'))) {
+        console.log(chalk.red('❗️ 该路径不是有效的 Obsidian 知识库（缺少 .obsidian 文件夹）'));
+      } else {
+        // 路径有效
+        return {
+          name: path.basename(trimmedPath),
+          path: trimmedPath
+        };
       }
-    }]);
-    
-    return {
-      name: path.basename(customPath.trim()),
-      path: customPath.trim()
-    };
+      
+      // 提示按任意键重新输入
+      await inquirer.prompt([{
+        type: 'input',
+        name: 'retry',
+        message: '按回车重新输入路径...'
+      }]);
+    }
   }
 
   async scanExistingTags(cfg) {
@@ -281,7 +297,7 @@ class Tagger {
       });
       
       if (targetDocs.length === 0) {
-        console.log(chalk.green('✅ 所有文档都已打标！'));
+        console.log(chalk.yellow('❗️ 所有文档都已打标！'));
         return;
       }
       console.log(chalk.blue(`\n发现 ${targetDocs.length} 个未打标文档\n`));
@@ -300,8 +316,13 @@ class Tagger {
       const { tags } = await inquirer.prompt([{
         type: 'input',
         name: 'tags',
-        message: '输入标签（用空格分隔，如：#AI #笔记）：'
+        message: '输入标签（用空格分隔，如：#AI #笔记），输入 `pass` 跳过：'
       }]);
+
+      if (tags.trim() === 'pass') {
+        console.log(chalk.gray('⏭️  已跳过'));
+        continue;
+      }
 
       if (tags.trim()) {
         const tagList = tags.trim().split(/\s+/);
@@ -325,7 +346,7 @@ class Tagger {
       const tags = this.database.getAllTags();
       
       if (tags.length === 0) {
-        console.log(chalk.yellow('标签数据库为空'));
+        console.log(chalk.yellow('❗️ 标签数据库为空'));
         return;
       }
 
@@ -432,7 +453,7 @@ class Tagger {
       const tags = this.database.getAllTags();
       
       if (tags.length === 0) {
-        console.log(chalk.yellow('标签数据库为空'));
+        console.log(chalk.yellow('❗️ 标签数据库为空'));
         return;
       }
 
@@ -527,9 +548,9 @@ class Tagger {
       }
 
       const choices = [
-        { name: '1. 修改目标知识库', value: 1 },
-        { name: '2. 修改目标文件夹', value: 2 },
-        { name: '3. 修改标签位置', value: 3 }
+        { name: `1. 修改目标知识库 (当前: ${cfg.vaultName})`, value: 1 },
+        { name: `2. 修改目标文件夹 (当前: ${cfg.targetFolder})`, value: 2 },
+        { name: `3. 修改标签位置 (当前: ${cfg.labelPosition === 'tail' ? '尾部' : '头部'})`, value: 3 }
       ];
       
       // 非 OpenClaw 环境显示 AI 配置选项

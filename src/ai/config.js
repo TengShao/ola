@@ -161,7 +161,7 @@ class AIConfig {
     
     const choices = [
       ...providerConfig.models.map((m, i) => ({
-        name: `${i + 1}. ${m.name}`,
+        name: `${i + 1}. ${m.id} (${m.name})`,
         value: m.id
       })),
       { name: 'x. 返回', value: 'back' }
