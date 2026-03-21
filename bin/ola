@@ -6,8 +6,8 @@ const Tagger = require('../src/index');
 const tagger = new Tagger();
 
 program
-  .name('obsidian-tagger')
-  .description('自动为 Obsidian 文档添加标签，支持标签管理和同步')
+  .name('ola')
+  .description('AI-powered tagging system for Obsidian notes')
   .version('1.0.0');
 
 program

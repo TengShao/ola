@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const CONFIG_DIR = path.join(os.homedir(), '.openclaw', 'skills', 'obsidian-tagger');
+const CONFIG_DIR = path.join(os.homedir(), '.openclaw', 'skills', 'ola');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const DATABASE_FILE = path.join(CONFIG_DIR, 'tag-database.json');
 

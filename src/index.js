@@ -43,7 +43,7 @@ class Tagger {
   }
 
   async firstTimeSetup() {
-    console.log(chalk.blue('=== Obsidian Tagger 首次配置 ===\n'));
+    console.log(chalk.blue('=== Ola First-time Setup ===\n'));
 
     // 1. 选择知识库
     const vaults = this.findObsidianVaults();

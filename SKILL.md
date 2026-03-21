@@ -1,5 +1,5 @@
-name: obsidian-tagger
-description: 自动为 Obsidian 文档添加标签，支持标签管理和同步
+name: ola
+description: AI-powered tagging system for Obsidian notes with tag management and synchronization
 user-invocable: true
 metadata:
   {
@@ -11,45 +11,45 @@ metadata:
             {
               "id": "node",
               "kind": "node",
-              "package": "obsidian-tagger",
-              "bins": ["obsidian-tagger"],
-              "label": "Install Obsidian Tagger CLI (npm)",
+              "package": "ola",
+              "bins": ["ola"],
+              "label": "Install Ola CLI (npm)",
             },
           ],
       },
   }
 
-# Obsidian Tagger
+# Ola
 
-自动为 Obsidian 文档添加标签，支持标签管理和同步。
+AI-powered tagging system for Obsidian notes.
 
-## 触发词
+## Commands
 
-| 指令 | 功能 |
-|------|------|
-| `/ola` | 主入口，询问用户需求 |
-| `/ola new` | 执行打标签主流程 |
-| `/ola edit` | 修改/删除标签 |
-| `/ola list` | 查看标签库及关联文档 |
-| `/ola config` | 修改配置 |
-| `/ola reset` | 重置标签数据库 |
+| Command | Description |
+|---------|-------------|
+| `/ola` | Main menu |
+| `/ola new` | Tag documents |
+| `/ola edit` | Edit/delete tags |
+| `/ola list` | List all tags |
+| `/ola config` | Configuration |
+| `/ola reset` | Reset database |
 
-## 首次使用流程
+## First-time Setup
 
-1. 选择 Obsidian 知识库
-2. 选择目标文件夹
-3. 选择标签添加位置（头部/尾部）
-4. 可选：扫描已有标签
+1. Select Obsidian vault
+2. Choose target folder
+3. Select tag position (head/tail)
+4. Optional: Scan existing tags
 
-## 配置存储
+## Configuration
 
-- 配置文件：`~/.openclaw/skills/obsidian-tagger/config.json`
-- 标签数据库：`~/.openclaw/skills/obsidian-tagger/tag-database.json`
+- Config: `~/.openclaw/skills/ola/config.json`
+- Database: `~/.openclaw/skills/ola/tag-database.json`
 
-## 标签格式
+## Tag Format
 
 ```markdown
 ---
 
-**标签：** #tag1 #tag2
+**Tags:** #tag1 #tag2
 ```

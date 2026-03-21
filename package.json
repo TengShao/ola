@@ -1,10 +1,10 @@
 {
-  "name": "obsidian-tagger",
+  "name": "ola",
   "version": "1.0.0",
-  "description": "自动为 Obsidian 文档添加标签，支持标签管理和同步",
+  "description": "AI-powered tagging system for Obsidian notes with tag management and synchronization",
   "main": "src/index.js",
   "bin": {
-    "obsidian-tagger": "./bin/obsidian-tagger"
+    "ola": "./bin/ola"
   },
   "scripts": {
     "start": "node bin/obsidian-tagger",
@@ -21,12 +21,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TengShao/obsidian-tagger.git"
+    "url": "git+https://github.com/TengShao/ola.git"
   },
   "bugs": {
-    "url": "https://github.com/TengShao/obsidian-tagger/issues"
+    "url": "https://github.com/TengShao/ola/issues"
   },
-  "homepage": "https://github.com/TengShao/obsidian-tagger#readme",
+  "homepage": "https://github.com/TengShao/ola#readme",
   "dependencies": {
     "commander": "^11.0.0",
     "chalk": "^4.1.2",

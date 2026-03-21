@@ -1,97 +1,97 @@
-# Obsidian Tagger
+# Ola
 
-自动为 Obsidian 文档添加标签，支持标签管理和同步。
+AI-powered tagging system for Obsidian notes with tag management and synchronization.
 
-## 功能
+## Features
 
-- 🏷️ **智能打标签** — 为文档自动生成并添加标签
-- ✏️ **标签管理** — 修改、删除标签，同步更新所有关联文档
-- 📋 **标签浏览** — 查看所有标签及关联文档
-- ⚙️ **灵活配置** — 支持多个知识库、自定义目标文件夹、标签位置
+- 🏷️ **Smart Tagging** — Automatically generate and add tags to your notes
+- ✏️ **Tag Management** — Edit, rename, or delete tags across all linked documents
+- 📋 **Tag Browser** — View all tags and their associated documents
+- ⚙️ **Flexible Configuration** — Support multiple vaults, custom target folders, tag positions
 
-## 安装
-
-```bash
-npm install -g obsidian-tagger
-```
-
-## 使用方法
-
-### 首次配置
+## Installation
 
 ```bash
-obsidian-tagger
-# 或
-obsidian-tagger /ola
+npm install -g ola
 ```
 
-按照提示选择：
-1. Obsidian 知识库
-2. 目标文件夹
-3. 标签添加位置（头部/尾部）
+## Usage
 
-### 给文档打标签
+### First-time Setup
 
 ```bash
-obsidian-tagger /ola-new
+ola
+# or
+ola /ola
 ```
 
-### 修改/删除标签
+Follow the prompts to configure:
+1. Select your Obsidian vault
+2. Choose target folder
+3. Select tag position (head/tail)
+
+### Tag Documents
 
 ```bash
-obsidian-tagger /ola-edit
+ola /ola-new
 ```
 
-### 查看标签列表
+### Edit/Delete Tags
 
 ```bash
-obsidian-tagger /ola-list
+ola /ola-edit
 ```
 
-### 修改配置
+### List Tags
 
 ```bash
-obsidian-tagger /ola-config
+ola /ola-list
 ```
 
-### 重置数据库
+### Update Configuration
 
 ```bash
-obsidian-tagger /ola-reset
+ola /ola-config
 ```
 
-## OpenClaw 集成
+### Reset Database
 
-在 OpenClaw 中使用：
-
-```
-/ola         # 主菜单
-/ola new     # 打标签
-/ola edit    # 编辑标签
-/ola list    # 查看标签
-/ola config  # 修改配置
-/ola reset   # 重置
+```bash
+ola /ola-reset
 ```
 
-## 配置存储
+## OpenClaw Integration
 
-- 配置文件：`~/.openclaw/skills/obsidian-tagger/config.json`
-- 标签数据库：`~/.openclaw/skills/obsidian-tagger/tag-database.json`
+Use in OpenClaw:
 
-## 标签格式
+```
+/ola         # Main menu
+/ola new     # Tag documents
+/ola edit    # Edit tags
+/ola list    # List tags
+/ola config  # Configuration
+/ola reset   # Reset database
+```
 
-标签会被添加到文档末尾（或开头），格式如下：
+## Configuration
+
+- Config file: `~/.openclaw/skills/ola/config.json`
+- Tag database: `~/.openclaw/skills/ola/tag-database.json`
+
+## Tag Format
+
+Tags are added at the end (or beginning) of documents in this format:
 
 ```markdown
 ---
 
-**标签：** #AI #笔记 #Obsidian
+**Tags:** #AI #notes #obsidian
 ```
 
-## 许可证
+## License
 
 MIT
 
-## 作者
+## Author
 
 TengShao
