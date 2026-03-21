@@ -8,7 +8,7 @@ const tagger = new Tagger();
 program
   .name('ola')
   .description('AI-powered tagging system for Obsidian notes')
-  .version('1.0.0');
+  .version('0.1.0');
 
 program
   .command('/ola', { isDefault: true })
