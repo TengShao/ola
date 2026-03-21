@@ -83,6 +83,10 @@ class Tagger {
       
       if (vaultIndex === 'custom') {
         selectedVault = await this.promptForCustomVault();
+        // 用户选择返回，重新显示知识库列表
+        if (selectedVault === null) {
+          continue;
+        }
       } else {
         selectedVault = vaults[vaultIndex];
       }
@@ -222,10 +226,15 @@ class Tagger {
       const { customPath } = await inquirer.prompt([{
         type: 'input',
         name: 'customPath',
-        message: '请输入 Obsidian 知识库的完整路径：'
+        message: '请输入 Obsidian 知识库的完整路径（输入 `back` 返回）：'
       }]);
       
       const trimmedPath = customPath.trim();
+      
+      // 返回上一步
+      if (trimmedPath === 'back') {
+        return null;
+      }
       
       if (!trimmedPath) {
         console.log(chalk.red('❗️ 路径不能为空'));
@@ -241,12 +250,17 @@ class Tagger {
         };
       }
       
-      // 提示按任意键重新输入
-      await inquirer.prompt([{
+      // 提示按回车重新输入或输入 back 返回
+      console.log(chalk.gray('按回车重新输入，或输入 `back` 返回上一步'));
+      const { retry } = await inquirer.prompt([{
         type: 'input',
         name: 'retry',
-        message: '按回车重新输入路径...'
+        message: ''
       }]);
+      
+      if (retry.trim() === 'back') {
+        return null;
+      }
     }
   }
 
@@ -601,6 +615,10 @@ class Tagger {
     
     if (vaultIndex === 'custom') {
       newVault = await this.promptForCustomVault();
+      // 用户选择返回，不更新
+      if (newVault === null) {
+        return;
+      }
     } else {
       newVault = vaults[vaultIndex];
     }
