@@ -4,11 +4,19 @@ const inquirer = require('inquirer');
 const chalk = require('chalk');
 const { Config, Database } = require('./config');
 const Scanner = require('./scanner');
+const AIConfig = require('./ai/config');
+
+// 检测是否在 OpenClaw 环境
+function isOpenClawEnvironment() {
+  return !!process.env.OPENCLAW_SESSION || 
+         !!process.env.OPENCLAW_GATEWAY;
+}
 
 class Tagger {
   constructor() {
     this.config = new Config();
     this.database = new Database();
+    this.aiConfig = new AIConfig(this.config);
   }
 
   async mainMenu() {
@@ -132,6 +140,12 @@ class Tagger {
 
     if (scanExisting) {
       await this.scanExistingTags(cfg);
+    }
+
+    // 检测 OpenClaw 环境，非 OpenClaw 环境配置 AI 模型
+    if (!isOpenClawEnvironment()) {
+      console.log(chalk.blue('\n🔧 配置 AI 模型（可选）'));
+      await this.aiConfig.configureAI();
     }
 
     // 询问是否处理文档
@@ -504,17 +518,32 @@ class Tagger {
       console.log(`1. 目标知识库: ${cfg.vaultName}`);
       console.log(`2. 目标文件夹: ${cfg.targetFolder}`);
       console.log(`3. 标签位置: ${cfg.labelPosition === 'tail' ? '尾部' : '头部'}`);
+      
+      // 显示 AI 配置状态
+      if (this.aiConfig.hasAIConfig()) {
+        console.log(`4. AI 模型: ${this.aiConfig.getCurrentConfigString()}`);
+      } else if (!isOpenClawEnvironment()) {
+        console.log(`4. AI 模型: 未配置`);
+      }
+
+      const choices = [
+        { name: '1. 修改目标知识库', value: 1 },
+        { name: '2. 修改目标文件夹', value: 2 },
+        { name: '3. 修改标签位置', value: 3 }
+      ];
+      
+      // 非 OpenClaw 环境显示 AI 配置选项
+      if (!isOpenClawEnvironment()) {
+        choices.push({ name: '4. 修改模型配置', value: 4 });
+      }
+      
+      choices.push({ name: '↩️  返回', value: 'back' });
 
       const { choice } = await inquirer.prompt([{
         type: 'list',
         name: 'choice',
         message: '选择要修改的配置：',
-        choices: [
-          { name: '1. 修改目标知识库', value: 1 },
-          { name: '2. 修改目标文件夹', value: 2 },
-          { name: '3. 修改标签位置', value: 3 },
-          { name: '↩️  返回', value: 'back' }
-        ]
+        choices
       }]);
 
       if (choice === 'back') {
@@ -527,6 +556,8 @@ class Tagger {
         await this.changeFolder(cfg);
       } else if (choice === 3) {
         await this.changePosition(cfg);
+      } else if (choice === 4) {
+        await this.aiConfig.configureAI();
       }
     }
   }

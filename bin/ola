@@ -3,11 +3,13 @@
 const { program } = require('commander');
 const Tagger = require('../src/index');
 const { Config, Database } = require('../src/config');
+const AIConfig = require('../src/ai/config');
 const chalk = require('chalk');
 
 const tagger = new Tagger();
 const config = new Config();
 const database = new Database();
+const aiConfig = new AIConfig(config);
 
 program
   .name('ola')
@@ -161,6 +163,36 @@ program
     
     console.log(chalk.yellow('\n⚠️  这是模拟数据，实际未写入文档'));
     console.log(chalk.gray('提示：使用 ola /ola-new 实际打标签'));
+  });
+
+// AI 配置调试命令
+program
+  .command('/ola-dev:ai-config')
+  .description('[DEBUG] 配置/修改 AI 模型')
+  .action(async () => {
+    await aiConfig.configureAI();
+  });
+
+program
+  .command('/ola-dev:ai-show')
+  .description('[DEBUG] 显示 AI 配置')
+  .action(async () => {
+    if (aiConfig.hasAIConfig()) {
+      console.log(chalk.blue('\n=== AI 配置 ===\n'));
+      console.log(`当前配置: ${aiConfig.getCurrentConfigString()}`);
+      console.log(chalk.gray('\n详细配置:'));
+      console.log(JSON.stringify(aiConfig.getCurrentConfig(), null, 2));
+    } else {
+      console.log(chalk.yellow('⚠️  未配置 AI 模型'));
+    }
+  });
+
+program
+  .command('/ola-dev:ai-reset')
+  .description('[DEBUG] 清除 AI 配置')
+  .action(async () => {
+    aiConfig.clearAIConfig();
+    console.log(chalk.green('✅ AI 配置已清除'));
   });
 
 program.parse();
