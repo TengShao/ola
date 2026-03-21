@@ -11,7 +11,7 @@ metadata:
             {
               "id": "node",
               "kind": "node",
-              "package": "ola",
+              "package": "@tengshao/ola",
               "bins": ["ola"],
               "label": "Install Ola CLI (npm)",
             },

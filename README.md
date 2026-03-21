@@ -14,7 +14,7 @@ AI-powered tagging system for Obsidian notes with tag management and synchroniza
 ## Installation
 
 ```bash
-npm install -g ola
+npm install -g @tengshao/ola
 ```
 
 ## Usage
@@ -106,7 +106,7 @@ Tags are added at the end (or beginning) of documents in this format:
 ## 安装
 
 ```bash
-npm install -g ola
+npm install -g @tengshao/ola
 ```
 
 ## 使用方法

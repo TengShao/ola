@@ -1,5 +1,5 @@
 {
-  "name": "ola",
+  "name": "@tengshao/ola",
   "version": "0.1.0",
   "description": "AI-powered tagging system for Obsidian notes with tag management and synchronization",
   "main": "src/index.js",
@@ -7,7 +7,7 @@
     "ola": "./bin/ola"
   },
   "scripts": {
-    "start": "node bin/obsidian-tagger",
+    "start": "node bin/ola",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -15,7 +15,9 @@
     "tagger",
     "markdown",
     "openclaw",
-    "cli"
+    "cli",
+    "ai",
+    "notes"
   ],
   "author": "TengShao",
   "license": "MIT",
@@ -35,5 +37,8 @@
   },
   "engines": {
     "node": ">=16.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
