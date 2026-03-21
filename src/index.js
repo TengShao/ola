@@ -148,31 +148,26 @@ class Tagger {
       await this.aiConfig.configureAI();
     }
 
-    // 询问是否处理文档
-    const { processDocs } = await inquirer.prompt([{
-      type: 'confirm',
-      name: 'processDocs',
-      message: '是否立即处理文档打标签？',
-      default: true
+    // 询问处理模式（PRD 第 7 步）
+    const { processMode } = await inquirer.prompt([{
+      type: 'list',
+      name: 'processMode',
+      message: '是否处理所有文档，还是仅处理不包含标签的文档？',
+      choices: [
+        { name: '1. 处理所有文档', value: 'all' },
+        { name: '2. 仅处理不包含标签的文档', value: 'untagged' },
+        { name: '↩️  返回主菜单', value: 'back' }
+      ]
     }]);
 
-    if (processDocs) {
-      const { processMode } = await inquirer.prompt([{
-        type: 'list',
-        name: 'processMode',
-        message: '处理模式：',
-        choices: [
-          { name: '处理所有文档', value: 'all' },
-          { name: '仅处理不包含标签的文档', value: 'untagged' }
-        ]
-      }]);
-      
-      await this.newLabels(processMode === 'all');
-    } else {
-      // 用户选择不处理，返回主菜单
+    if (processMode === 'back') {
       console.log(chalk.blue('\n返回主菜单...'));
       await this.mainMenu();
+      return;
     }
+    
+    // 从主流程第 3 步开始执行（PRD 第 8 步）
+    await this.newLabels(processMode === 'all');
   }
 
   findObsidianVaults() {
