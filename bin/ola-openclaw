@@ -1,16 +1,11 @@
 #!/usr/bin/env node
 
 /**
- * OpenClaw 入口（简化版）
- * 直接使用核心逻辑，适配 OpenClaw 消息交互
+ * OpenClaw 入口（完整交互版）
+ * 按 PRD 规范实现多轮对话
  */
 
-const fs = require('fs');
-const path = require('path');
-const { Config, Database } = require('../src/config');
-const Scanner = require('../src/scanner');
-const AIConfig = require('../src/ai/config');
-const { TagGenerator } = require('../src/core');
+const OpenClawHandler = require('../src/openclaw/handler');
 
 // 检测环境
 const isOpenClaw = !!process.env.OPENCLAW_SESSION || 
@@ -21,163 +16,40 @@ if (!isOpenClaw) {
   process.exit(1);
 }
 
-// 简单的消息输出
-function sendMessage(text) {
-  console.log(text);
-}
+// 获取会话 ID 和命令
+const sessionId = process.env.OPENCLAW_SESSION || 'default';
+const args = process.argv.slice(2);
+const command = args[0] || '/ola';
+const userInput = args[1] || null; // 用户回复内容
 
-// 主函数
+const handler = new OpenClawHandler();
+
 async function main() {
-  const args = process.argv.slice(2);
-  const command = args[0] || '/ola';
-  
-  const config = new Config();
-  const database = new Database();
-  const aiConfig = new AIConfig(config);
-  
-  const cfg = config.load();
-  
-  if (!cfg && command !== '/ola config') {
-    sendMessage('⚠️ 首次使用，请先配置\n运行: /ola config');
-    return;
-  }
-  
-  switch (command) {
-    case '/ola':
-    case '/ola new':
-      await handleNewLabels(cfg, database, aiConfig);
-      break;
-    case '/ola list':
-      await handleListTags(database);
-      break;
-    case '/ola config':
-      sendMessage('⚙️ 配置请在 CLI 环境下运行: ola /ola-config');
-      break;
-    default:
-      sendMessage(`❓ 未知命令: ${command}\n可用: /ola, /ola new, /ola list`);
+  try {
+    switch (command) {
+      case '/ola':
+      case '/ola new':
+        const result = await handler.handleNewLabels(sessionId, userInput);
+        console.log(result.message);
+        break;
+        
+      case '/ola list':
+        const listResult = await handler.handleListTags();
+        console.log(listResult.message);
+        break;
+        
+      case '/ola config':
+        console.log('⚙️ 配置请在 CLI 环境下运行: ola /ola-dev:ai-config');
+        break;
+        
+      default:
+        console.log(`❓ 未知命令: ${command}`);
+        console.log('可用: /ola, /ola new, /ola list');
+    }
+  } catch (error) {
+    console.error('❌ 错误:', error.message);
+    process.exit(1);
   }
 }
 
-/**
- * 处理打标签
- */
-async function handleNewLabels(cfg, database, aiConfig) {
-  const scanner = new Scanner(cfg.vaultPath);
-  const docs = await scanner.scanFolder(cfg.targetFolder);
-  
-  // 筛选未打标的文档
-  const pendingDocs = docs.filter(doc => {
-    const mtime = Math.floor(doc.mtime / 1000);
-    return !database.isDocTagged(doc.relativePath, mtime);
-  });
-  
-  if (pendingDocs.length === 0) {
-    sendMessage('✅ 所有文档都已打标！');
-    return;
-  }
-  
-  sendMessage(`📄 发现 ${pendingDocs.length} 个未打标文档\n`);
-  
-  // 检查 AI 配置
-  let tagGenerator = null;
-  if (aiConfig.hasAIConfig()) {
-    try {
-      tagGenerator = aiConfig.createTagGenerator({ maxTags: 5 });
-      sendMessage('🤖 使用 AI 生成标签\n');
-    } catch (e) {
-      sendMessage('⚠️ AI 配置错误，使用手动模式\n');
-    }
-  } else {
-    sendMessage('💡 提示: 配置 AI 可自动生成标签\n运行: ola /ola-dev:ai-config\n');
-  }
-  
-  const existingTags = database.getAllTags();
-  const results = [];
-  
-  for (const doc of pendingDocs.slice(0, 5)) { // 限制处理数量
-    const content = scanner.readDoc(doc.fullPath);
-    const docExistingTags = scanner.extractExistingTags(content);
-    
-    let finalTags = [];
-    
-    if (tagGenerator) {
-      try {
-        sendMessage(`📝 分析: ${doc.relativePath}`);
-        
-        const result = await tagGenerator.generate(
-          { path: doc.relativePath, content },
-          { existingTags, docTags: docExistingTags }
-        );
-        
-        // 显示建议
-        let table = '| 标签 | 状态 |\n| ---- | ---- |\n';
-        result.tags.forEach(t => {
-          const status = t.status === 'new' ? '新增' : '已有';
-          table += `| ${t.tag} | ${status} |\n`;
-        });
-        
-        sendMessage(`\n💡 AI 建议:\n${table}`);
-        sendMessage(`📋 ${result.summary}\n`);
-        
-        // 简化：直接使用 AI 建议的全部标签
-        finalTags = result.tags.map(t => t.tag);
-        
-      } catch (error) {
-        sendMessage(`❌ AI 失败: ${error.message}`);
-        continue;
-      }
-    } else {
-      // 手动模式：提示用户
-      sendMessage(`\n📄 ${doc.relativePath}`);
-      sendMessage('请手动添加标签（格式: #标签1 #标签2）');
-      sendMessage('（OpenClaw 暂不支持交互输入，请在 CLI 中使用）');
-      continue;
-    }
-    
-    // 写入标签
-    if (finalTags.length > 0) {
-      const newContent = scanner.addTagsToDoc(content, finalTags, cfg.labelPosition);
-      scanner.writeDoc(doc.fullPath, newContent);
-      
-      const mtime = Math.floor(fs.statSync(doc.fullPath).mtimeMs / 1000);
-      for (const tag of finalTags) {
-        database.addTag(tag, doc.relativePath, mtime);
-      }
-      database.save();
-      
-      results.push({ path: doc.relativePath, tags: finalTags });
-      sendMessage(`✅ 已添加: ${finalTags.join(' ')}\n`);
-    }
-  }
-  
-  // 汇总
-  sendMessage(`🎉 完成！处理 ${results.length} 个文档`);
-  if (pendingDocs.length > 5) {
-    sendMessage(`（还有 ${pendingDocs.length - 5} 个文档未处理，再次运行 /ola new 继续）`);
-  }
-}
-
-/**
- * 处理标签列表
- */
-async function handleListTags(database) {
-  const tags = database.getAllTags();
-  
-  if (tags.length === 0) {
-    sendMessage('📭 标签数据库为空');
-    return;
-  }
-  
-  let table = '| 标签 | 文档数 |\n| ---- | ---- |\n';
-  tags.forEach(tag => {
-    const count = database.getTagDocs(tag).length;
-    table += `| ${tag} | ${count} |\n`;
-  });
-  
-  sendMessage(`🏷️ 标签列表 (${tags.length} 个):\n\n${table}`);
-}
-
-main().catch(error => {
-  console.error('❌ 错误:', error.message);
-  process.exit(1);
-});
+main();
