@@ -27,9 +27,19 @@ ola/
 │   ├── index.js         # 主逻辑、流程控制
 │   ├── config.js        # 配置和数据库管理
 │   ├── scanner.js       # 文件扫描和标签操作
-│   └── ai/              # AI 模块
-│       ├── providers.js # 供应商配置
-│       └── config.js    # AI 配置管理
+│   ├── ai/              # AI 模块
+│   │   ├── providers.js # 供应商配置
+│   │   ├── config.js    # AI 配置管理
+│   │   └── providers/   # 提供商实现
+│   │       ├── base.js      # 抽象基类
+│   │       ├── index.js     # 提供商工厂
+│   │       ├── aliyun.js    # 阿里云 DashScope
+│   │       ├── bailian.js   # 阿里云百炼
+│   │       └── siliconflow.js # SiliconFlow
+│   └── core/            # 核心逻辑层
+│       ├── index.js         # 模块导出
+│       ├── tag-generator.js # 标签生成器
+│       └── tag-matcher.js   # 标签匹配器
 ├── package.json
 ├── README.md
 ├── SKILL.md             # OpenClaw 技能定义
@@ -45,6 +55,10 @@ ola/
 | `Database` | 管理 `tag-database.json` 读写 |
 | `Scanner` | 文件系统操作、标签提取和写入 |
 | `AIConfig` | AI 模型配置管理 |
+| `TagGenerator` | AI 标签生成核心逻辑 |
+| `TagMatcher` | 标签匹配与相似度算法 |
+| `BaseAIProvider` | AI 提供商抽象基类 |
+| `BailianProvider` | 阿里云百炼提供商实现 |
 
 ---
 
@@ -96,13 +110,16 @@ ola/
 | MiniMax | `https://api.minimax.chat/v1` | abab6.5-chat | MINIMAX_API_KEY |
 | Z.ai | `https://api.z.ai/v1` | glm-4 | ZAI_API_KEY |
 | Aliyun | `https://dashscope.aliyuncs.com/api/v1` | qwen-turbo | DASHSCOPE_API_KEY |
+| Bailian | `https://coding.dashscope.aliyuncs.com/v1` | qwen3.5-plus | DASHSCOPE_API_KEY |
 | DeepSeek | `https://api.deepseek.com/v1` | deepseek-chat | DEEPSEEK_API_KEY |
 | Ollama | `http://localhost:11434/api` | llama2 | 无需 |
+| SiliconFlow | `https://api.siliconflow.cn/v1` | Qwen/Qwen2.5-7B-Instruct | SILICONFLOW_API_KEY |
 
 ### 特殊处理
 - **OpenRouter**: 需要额外 header `HTTP-Referer` 和 `X-Title`
 - **MiniMax**: 需要额外参数 `group_id`
 - **Ollama**: 本地运行，无需 API Key
+- **Bailian**: 使用套餐专属 Base URL `coding.dashscope.aliyuncs.com`，兼容 OpenAI 接口协议
 
 ---
 
@@ -190,17 +207,80 @@ main (稳定版)
 - [x] 所有流程添加返回选项
 - [x] AI 配置框架
 - [x] 10 个 AI 供应商配置
+- [x] **AI 标签生成核心实现 (2026-03-24)**
+  - [x] 提供商抽象基类与工厂模式
+  - [x] 阿里云百炼提供商（已验证可用）
+  - [x] 标签匹配算法（相似度计算）
+  - [x] 集成到主流程 `/ola new`
+- [x] **核心逻辑抽离 (2026-03-24)**
+  - [x] `src/core/` 纯逻辑层
+  - [x] `TagGenerator` - 生成+匹配整合
+  - [x] `TagMatcher` - 相似度算法
 
 ### 进行中 🚧
-- [ ] AI 标签生成实现
-- [ ] OpenAI 提供商实现
 - [ ] API Key 加密存储
+- [ ] 更多 AI 提供商实现（OpenAI、Kimi 等）
 
 ### 计划中 📋
-- [ ] 更多 AI 提供商实现
 - [ ] 标签推荐算法优化
 - [ ] 批量处理性能优化
 - [ ] 测试覆盖率提升
+
+---
+
+## 开发日志
+
+### 2026-03-24 - AI 标签生成实现
+
+**开发者**: Asuka & Teng 💕
+
+**今日完成**:
+
+1. **核心架构重构**
+   - 按 PRD 核心逻辑抽离原则，创建 `src/core/` 纯逻辑层
+   - 实现 `TagGenerator` - 整合 AI 生成与标签匹配
+   - 实现 `TagMatcher` - 多维度相似度算法（编辑距离、包含关系、中文相似度）
+
+2. **AI 提供商实现**
+   - 创建提供商抽象基类 `BaseAIProvider`
+   - 实现提供商工厂 `ProviderFactory`
+   - 实现 **阿里云百炼** `BailianProvider`（已验证可用）
+   - 预留阿里云标准版、SiliconFlow 等提供商接口
+
+3. **主流程集成**
+   - 修改 `newLabels()` 方法，支持 AI 生成标签
+   - 添加用户确认流程：全部添加 / 部分添加 / 手动输入 / 跳过
+   - 无 AI 配置时自动降级到手动输入模式
+
+4. **标签匹配算法**
+   - 完全一致匹配（大小写不敏感）
+   - 相似度匹配（阈值可配置，默认 0.6）
+   - 标签合并与去重（限制最多 5 个）
+   - 智能标记：existing / similar / new
+
+**技术决策**:
+- 使用工厂模式管理多提供商
+- 相似度算法采用加权平均：包含关系 30% + 编辑距离 30% + 共同子串 20% + 中文相似度 20%
+- 保持业务逻辑与 UI 分离，便于后续支持 Obsidian 插件
+
+**测试结果**:
+```
+文档: 深度学习入门指南
+AI 生成标签:
+  1. #深度学习 (相关度: 0.98)
+  2. #神经网络 (相关度: 0.92)
+  3. #机器学习 (相关度: 0.85)
+  4. #算法/反向传播 (相关度: 0.78)
+  5. #教程/入门 (相关度: 0.7)
+
+匹配结果:
+  ✅ #机器学习 → 匹配已有标签
+  🆕 其他 4 个 → 新增标签
+```
+
+**提交记录**:
+- `a0e8590` - feat: Implement AI tag generation with Bailian provider
+- `519cee7` - feat: Integrate AI tag generation into main workflow
 
 ---
 
@@ -225,5 +305,5 @@ A: 在 `src/ai/providers.js` 中添加配置，在 `src/ai/providers/` 中实现
 
 ---
 
-*最后更新: 2026-03-21*
+*最后更新: 2026-03-24*
 *维护者: TengShao & Asuka 💕*
