@@ -305,5 +305,28 @@ A: 在 `src/ai/providers.js` 中添加配置，在 `src/ai/providers/` 中实现
 
 ---
 
-*最后更新: 2026-03-24*
-*维护者: TengShao & Asuka 💕*
+---
+
+## 项目路径变更
+
+### 2026-03-24 迁移到新路径
+
+**旧路径**: `~/.openclaw/skills/ola`（OpenClaw 测试环境）  
+**新路径**: `/Users/teng/Drive/Project/ola`（正式开发环境）
+
+**变更原因**:
+- 项目架构已支持多平台（CLI / OpenClaw / Obsidian）
+- 不应再放在 OpenClaw 专属目录下
+- 独立路径便于版本管理和发布
+
+**Git 历史**: 完整保留（23 个提交）
+
+**OpenClaw 测试**: 
+- 旧路径 `~/.openclaw/skills/ola` 保留用于测试
+- 发布新版本时同步到旧路径进行测试
+
+---
+
+*最后更新: 2026-03-24*  
+*维护者: TengShao & Asuka 💕*  
+*开发路径: `/Users/teng/Drive/Project/ola`*
