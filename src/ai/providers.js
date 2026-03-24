@@ -95,16 +95,31 @@ const PROVIDER_CONFIGS = {
     ]
   },
   
-  aliyun: {
-    name: 'Aliyun',
-    defaultBaseUrl: 'https://dashscope.aliyuncs.com/api/v1',
-    defaultModel: 'qwen-turbo',
+  bailian: {
+    name: '阿里云百炼',
+    defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    defaultModel: 'qwen-plus',
     envKey: 'DASHSCOPE_API_KEY',
-    docs: 'https://help.aliyun.com/dashscope',
+    docs: 'https://help.aliyun.com/document_detail/611472.html',
     models: [
       { id: 'qwen-turbo', name: '通义千问 Turbo' },
       { id: 'qwen-plus', name: '通义千问 Plus' },
-      { id: 'qwen-max', name: '通义千问 Max' }
+      { id: 'qwen-max', name: '通义千问 Max' },
+      { id: 'qwen-coder-plus', name: '通义千问 Coder Plus' }
+    ]
+  },
+
+  siliconflow: {
+    name: 'SiliconFlow',
+    defaultBaseUrl: 'https://api.siliconflow.cn/v1',
+    defaultModel: 'Qwen/Qwen2.5-7B-Instruct',
+    envKey: 'SILICONFLOW_API_KEY',
+    docs: 'https://docs.siliconflow.cn',
+    models: [
+      { id: 'Qwen/Qwen2.5-7B-Instruct', name: '通义千问 2.5 7B' },
+      { id: 'Qwen/Qwen2.5-32B-Instruct', name: '通义千问 2.5 32B' },
+      { id: 'deepseek-ai/DeepSeek-V3', name: 'DeepSeek V3' },
+      { id: 'deepseek-ai/DeepSeek-R1', name: 'DeepSeek R1' }
     ]
   },
   

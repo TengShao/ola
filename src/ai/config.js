@@ -4,6 +4,8 @@ const path = require('path');
 const inquirer = require('inquirer');
 const chalk = require('chalk');
 const { PROVIDER_CONFIGS, PROVIDER_LIST } = require('./providers');
+const ProviderFactory = require('./providers');
+const { TagGenerator } = require('../core');
 
 class AIConfig {
   constructor(configInstance) {
@@ -182,6 +184,15 @@ class AIConfig {
     const cfg = this.config.load();
     delete cfg.ai;
     this.config.save(cfg);
+  }
+
+  // 创建标签生成器
+  createTagGenerator(options = {}) {
+    const cfg = this.getCurrentConfig();
+    if (!cfg) {
+      throw new Error('AI 配置不存在');
+    }
+    return new TagGenerator(cfg, options);
   }
 }
 
