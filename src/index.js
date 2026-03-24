@@ -5,6 +5,7 @@ const chalk = require('chalk');
 const { Config, Database } = require('./config');
 const Scanner = require('./scanner');
 const AIConfig = require('./ai/config');
+const { TagGenerator } = require('./core');
 
 // 检测是否在 OpenClaw 环境
 function isOpenClawEnvironment() {
@@ -312,42 +313,144 @@ class Tagger {
       console.log(chalk.blue(`\n发现 ${targetDocs.length} 个未打标文档\n`));
     }
 
-    // 这里应该调用 AI 生成标签，但 CLI 版本需要用户自己提供标签
-    // 或者集成 OpenAI API
-    console.log(chalk.yellow('提示：CLI 版本需要手动指定标签'));
-    console.log(chalk.gray('（OpenClaw 集成版本会自动调用 AI 生成标签）\n'));
+    // 检查是否有 AI 配置
+    const hasAI = this.aiConfig.hasAIConfig();
+    let tagGenerator = null;
+    
+    if (hasAI) {
+      try {
+        tagGenerator = this.aiConfig.createTagGenerator({ maxTags: 5 });
+        console.log(chalk.blue('🤖 使用 AI 生成标签\n'));
+      } catch (error) {
+        console.log(chalk.yellow(`⚠️  AI 配置错误: ${error.message}`));
+        console.log(chalk.gray('将使用手动输入模式\n'));
+      }
+    } else {
+      console.log(chalk.yellow('提示：未配置 AI 模型，使用手动输入模式'));
+      console.log(chalk.gray('运行 "/ola config" 可配置 AI 模型\n'));
+    }
+
+    // 获取所有已有标签用于匹配
+    const existingTags = this.database.getAllTags();
 
     for (const doc of targetDocs) {
       const content = scanner.readDoc(doc.fullPath);
+      const docExistingTags = scanner.extractExistingTags(content);
+      
       console.log(chalk.cyan(`\n📄 ${doc.relativePath}`));
-      console.log(chalk.gray(content.substring(0, 200) + '...\n'));
-
-      const { tags } = await inquirer.prompt([{
-        type: 'input',
-        name: 'tags',
-        message: '输入标签（用空格分隔，如：#AI #笔记），输入 `pass` 跳过：'
-      }]);
-
-      if (tags.trim() === 'pass') {
-        console.log(chalk.gray('⏭️  已跳过'));
-        continue;
+      
+      let finalTags = [];
+      
+      if (tagGenerator) {
+        // AI 生成标签模式
+        try {
+          console.log(chalk.gray('🤖 正在分析文档内容...'));
+          
+          const result = await tagGenerator.generate(
+            { path: doc.relativePath, content },
+            { existingTags, docTags: docExistingTags }
+          );
+          
+          // 显示 AI 生成的标签
+          console.log(chalk.blue('\n💡 AI 建议标签:'));
+          result.tags.forEach((t, i) => {
+            const icon = t.status === 'new' ? '🆕' : '✅';
+            console.log(`   ${i + 1}. ${icon} ${t.tag}`);
+          });
+          
+          if (result.summary) {
+            console.log(chalk.gray(`   📋 ${result.summary}`));
+          }
+          
+          // 用户确认
+          const { action } = await inquirer.prompt([{
+            type: 'list',
+            name: 'action',
+            message: '请选择操作：',
+            choices: [
+              { name: '✅ 全部添加', value: 'all' },
+              { name: '✏️  部分添加', value: 'partial' },
+              { name: '✍️  手动输入', value: 'manual' },
+              { name: '⏭️  跳过', value: 'skip' }
+            ]
+          }]);
+          
+          if (action === 'skip') {
+            console.log(chalk.gray('⏭️  已跳过'));
+            continue;
+          } else if (action === 'all') {
+            finalTags = result.tags.map(t => t.tag);
+          } else if (action === 'partial') {
+            // 选择部分标签
+            const { selectedTags } = await inquirer.prompt([{
+              type: 'checkbox',
+              name: 'selectedTags',
+              message: '选择要添加的标签（空格选择，回车确认）：',
+              choices: result.tags.map(t => ({
+                name: `${t.tag} ${t.status === 'new' ? '(新增)' : ''}`,
+                value: t.tag,
+                checked: true
+              }))
+            }]);
+            finalTags = selectedTags;
+          } else {
+            // 手动输入
+            finalTags = await this.promptForManualTags(content, docExistingTags);
+          }
+          
+        } catch (error) {
+          console.log(chalk.red(`❌ AI 生成失败: ${error.message}`));
+          console.log(chalk.gray('切换到手动输入模式'));
+          finalTags = await this.promptForManualTags(content, docExistingTags);
+        }
+      } else {
+        // 手动输入模式
+        finalTags = await this.promptForManualTags(content, docExistingTags);
       }
-
-      if (tags.trim()) {
-        const tagList = tags.trim().split(/\s+/);
-        const newContent = scanner.addTagsToDoc(content, tagList, cfg.labelPosition);
+      
+      // 写入标签
+      if (finalTags.length > 0) {
+        const newContent = scanner.addTagsToDoc(content, finalTags, cfg.labelPosition);
         scanner.writeDoc(doc.fullPath, newContent);
-
+        
         // 更新数据库
         const mtime = Math.floor(fs.statSync(doc.fullPath).mtimeMs / 1000);
-        for (const tag of tagList) {
+        for (const tag of finalTags) {
           this.database.addTag(tag, doc.relativePath, mtime);
         }
         this.database.save();
-
-        console.log(chalk.green('✅ 已添加标签'));
+        
+        console.log(chalk.green(`✅ 已添加 ${finalTags.length} 个标签: ${finalTags.join(' ')}`));
       }
     }
+    
+    console.log(chalk.green(`\n🎉 完成！共处理 ${targetDocs.length} 个文档`));
+  }
+  
+  /**
+   * 手动输入标签
+   */
+  async promptForManualTags(content, existingTags) {
+    console.log(chalk.gray(content.substring(0, 200) + '...\n'));
+    
+    if (existingTags.length > 0) {
+      console.log(chalk.gray(`已有标签: ${existingTags.join(' ')}`));
+    }
+    
+    const { tags } = await inquirer.prompt([{
+      type: 'input',
+      name: 'tags',
+      message: '输入标签（用空格分隔，如：#AI #笔记），输入 `pass` 跳过：'
+    }]);
+    
+    if (tags.trim() === 'pass' || !tags.trim()) {
+      return [];
+    }
+    
+    // 自动补全 # 号
+    return tags.trim().split(/\s+/).map(t => {
+      return t.startsWith('#') ? t : '#' + t;
+    });
   }
 
   async editLabels() {
