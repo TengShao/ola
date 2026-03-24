@@ -12,10 +12,11 @@ metadata:
               "id": "node",
               "kind": "node",
               "package": "@tengshao/ola",
-              "bins": ["ola"],
+              "bins": ["ola", "ola-openclaw"],
               "label": "Install Ola CLI (npm)",
             },
           ],
+        "entry": "bin/ola-openclaw",
       },
   }
 

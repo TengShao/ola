@@ -1,0 +1,61 @@
+#!/usr/bin/env node
+
+/**
+ * OpenClaw 入口
+ * 处理消息交互而非命令行参数
+ */
+
+const Tagger = require('../src/index');
+const { AdapterFactory } = require('../src/adapters');
+
+// 检测是否在 OpenClaw 环境
+const isOpenClaw = !!process.env.OPENCLAW_SESSION || 
+                   !!process.env.OPENCLAW_GATEWAY;
+
+if (!isOpenClaw) {
+  console.error('❌ 此入口仅用于 OpenClaw 环境');
+  console.error('请使用: node bin/ola');
+  process.exit(1);
+}
+
+// 获取传入的参数
+const args = process.argv.slice(2);
+const command = args[0] || '/ola';
+
+async function main() {
+  const tagger = new Tagger();
+  
+  // OpenClaw 适配器会自动创建
+  
+  try {
+    switch (command) {
+      case '/ola':
+      case '/ola menu':
+        await tagger.mainMenu();
+        break;
+      case '/ola new':
+        await tagger.newLabels();
+        break;
+      case '/ola edit':
+        await tagger.editLabels();
+        break;
+      case '/ola list':
+        await tagger.listLabels();
+        break;
+      case '/ola config':
+        await tagger.configMenu();
+        break;
+      case '/ola reset':
+        await tagger.reset();
+        break;
+      default:
+        console.log(`❓ 未知命令: ${command}`);
+        console.log('可用命令: /ola, /ola new, /ola edit, /ola list, /ola config, /ola reset');
+    }
+  } catch (error) {
+    console.error('❌ 错误:', error.message);
+    process.exit(1);
+  }
+}
+
+main();
