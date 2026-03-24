@@ -7,11 +7,11 @@
 
 ## 项目概述
 
-**Ola** 是一个为 Obsidian 笔记提供 AI 智能标签的 CLI 工具，支持标签管理和同步。
+**Ola** 是一个为 Obsidian 笔记提供 AI 智能标签的 CLI 工具,支持标签管理和同步。
 
 ### 核心功能
-- 智能理解文档内容，自动生成标签
-- 修改/删除标签，同步更新所有关联文档
+- 智能理解文档内容,自动生成标签
+- 修改/删除标签,同步更新所有关联文档
 - 便捷查看标签关联的文档
 - 非 OpenClaw 环境支持配置自定义 AI 模型
 
@@ -50,7 +50,7 @@ ola/
 
 | 类名 | 职责 |
 |------|------|
-| `Tagger` | 主控制器，处理所有用户交互流程 |
+| `Tagger` | 主控制器,处理所有用户交互流程 |
 | `Config` | 管理 `config.json` 读写 |
 | `Database` | 管理 `tag-database.json` 读写 |
 | `Scanner` | 文件系统操作、标签提取和写入 |
@@ -83,7 +83,7 @@ ola/
 ```
 扫描文档 → 筛选未打标文档
   ↓
-  有 AI 配置？
+  有 AI 配置?
     ↓ 是
     调用 AI 生成标签
     ↓ 否
@@ -118,8 +118,8 @@ ola/
 ### 特殊处理
 - **OpenRouter**: 需要额外 header `HTTP-Referer` 和 `X-Title`
 - **MiniMax**: 需要额外参数 `group_id`
-- **Ollama**: 本地运行，无需 API Key
-- **Bailian**: 使用套餐专属 Base URL `coding.dashscope.aliyuncs.com`，兼容 OpenAI 接口协议
+- **Ollama**: 本地运行,无需 API Key
+- **Bailian**: 使用套餐专属 Base URL `coding.dashscope.aliyuncs.com`,兼容 OpenAI 接口协议
 
 ---
 
@@ -209,8 +209,8 @@ main (稳定版)
 - [x] 10 个 AI 供应商配置
 - [x] **AI 标签生成核心实现 (2026-03-24)**
   - [x] 提供商抽象基类与工厂模式
-  - [x] 阿里云百炼提供商（已验证可用）
-  - [x] 标签匹配算法（相似度计算）
+  - [x] 阿里云百炼提供商(已验证可用)
+  - [x] 标签匹配算法(相似度计算)
   - [x] 集成到主流程 `/ola new`
 - [x] **核心逻辑抽离 (2026-03-24)**
   - [x] `src/core/` 纯逻辑层
@@ -219,7 +219,7 @@ main (稳定版)
 
 ### 进行中 🚧
 - [ ] API Key 加密存储
-- [ ] 更多 AI 提供商实现（OpenAI、Kimi 等）
+- [ ] 更多 AI 提供商实现(OpenAI、Kimi 等)
 
 ### 计划中 📋
 - [ ] 标签推荐算法优化
@@ -237,31 +237,31 @@ main (稳定版)
 **今日完成**:
 
 1. **核心架构重构**
-   - 按 PRD 核心逻辑抽离原则，创建 `src/core/` 纯逻辑层
+   - 按 PRD 核心逻辑抽离原则,创建 `src/core/` 纯逻辑层
    - 实现 `TagGenerator` - 整合 AI 生成与标签匹配
-   - 实现 `TagMatcher` - 多维度相似度算法（编辑距离、包含关系、中文相似度）
+   - 实现 `TagMatcher` - 多维度相似度算法(编辑距离、包含关系、中文相似度)
 
 2. **AI 提供商实现**
    - 创建提供商抽象基类 `BaseAIProvider`
    - 实现提供商工厂 `ProviderFactory`
-   - 实现 **阿里云百炼** `BailianProvider`（已验证可用）
+   - 实现 **阿里云百炼** `BailianProvider`(已验证可用)
    - 预留阿里云标准版、SiliconFlow 等提供商接口
 
 3. **主流程集成**
-   - 修改 `newLabels()` 方法，支持 AI 生成标签
-   - 添加用户确认流程：全部添加 / 部分添加 / 手动输入 / 跳过
+   - 修改 `newLabels()` 方法,支持 AI 生成标签
+   - 添加用户确认流程:全部添加 / 部分添加 / 手动输入 / 跳过
    - 无 AI 配置时自动降级到手动输入模式
 
 4. **标签匹配算法**
-   - 完全一致匹配（大小写不敏感）
-   - 相似度匹配（阈值可配置，默认 0.6）
-   - 标签合并与去重（限制最多 5 个）
-   - 智能标记：existing / similar / new
+   - 完全一致匹配(大小写不敏感)
+   - 相似度匹配(阈值可配置,默认 0.6)
+   - 标签合并与去重(限制最多 5 个)
+   - 智能标记:existing / similar / new
 
 **技术决策**:
 - 使用工厂模式管理多提供商
-- 相似度算法采用加权平均：包含关系 30% + 编辑距离 30% + 共同子串 20% + 中文相似度 20%
-- 保持业务逻辑与 UI 分离，便于后续支持 Obsidian 插件
+- 相似度算法采用加权平均:包含关系 30% + 编辑距离 30% + 共同子串 20% + 中文相似度 20%
+- 保持业务逻辑与 UI 分离,便于后续支持 Obsidian 插件
 
 **测试结果**:
 ```
@@ -286,14 +286,14 @@ AI 生成标签:
 
 ## 常见问题
 
-### Q: 如何检测是否在 OpenClaw 环境？
+### Q: 如何检测是否在 OpenClaw 环境?
 A: 检查环境变量 `OPENCLAW_SESSION` 或 `OPENCLAW_GATEWAY`
 
-### Q: 为什么 Ollama 不需要 API Key？
-A: Ollama 是本地运行的，不需要认证
+### Q: 为什么 Ollama 不需要 API Key?
+A: Ollama 是本地运行的,不需要认证
 
-### Q: 如何添加新的 AI 供应商？
-A: 在 `src/ai/providers.js` 中添加配置，在 `src/ai/providers/` 中实现调用逻辑
+### Q: 如何添加新的 AI 供应商?
+A: 在 `src/ai/providers.js` 中添加配置,在 `src/ai/providers/` 中实现调用逻辑
 
 ---
 
@@ -311,22 +311,193 @@ A: 在 `src/ai/providers.js` 中添加配置，在 `src/ai/providers/` 中实现
 
 ### 2026-03-24 迁移到新路径
 
-**旧路径**: `~/.openclaw/skills/ola`（OpenClaw 测试环境）  
-**新路径**: `/Users/teng/Drive/Project/ola`（正式开发环境）
+**旧路径**: `~/.openclaw/skills/ola`(OpenClaw 测试环境)
+**新路径**: `/Users/teng/Drive/Project/ola`(正式开发环境)
 
 **变更原因**:
-- 项目架构已支持多平台（CLI / OpenClaw / Obsidian）
+- 项目架构已支持多平台(CLI / OpenClaw / Obsidian)
 - 不应再放在 OpenClaw 专属目录下
 - 独立路径便于版本管理和发布
 
-**Git 历史**: 完整保留（23 个提交）
+**Git 历史**: 完整保留(23 个提交)
 
-**OpenClaw 测试**: 
+**OpenClaw 测试**:
 - 旧路径 `~/.openclaw/skills/ola` 保留用于测试
 - 发布新版本时同步到旧路径进行测试
 
 ---
 
-*最后更新: 2026-03-24*  
-*维护者: TengShao & Asuka 💕*  
+---
+
+## Obsidian 插件开发知识
+
+> 来源: [Obsidian Developer Documentation](https://docs.obsidian.md/)
+> 记录时间: 2026-03-24
+
+### 基础概念
+
+**插件结构:**
+```
+my-plugin/
+├── main.ts           # 插件入口，必须导出 Plugin 类
+├── manifest.json     # 插件元数据
+├── styles.css        # 样式（可选）
+└── package.json      # npm 依赖
+```
+
+**manifest.json 必需字段:**
+```json
+{
+  "id": "ola",                    // 唯一标识符
+  "name": "Ola",                  // 显示名称
+  "version": "1.0.0",             // 版本号
+  "minAppVersion": "0.15.0",      // 最低 Obsidian 版本
+  "description": "AI-powered tagging system",
+  "author": "TengShao",
+  "authorUrl": "https://github.com/TengShao",
+  "isDesktopOnly": false          // 是否仅桌面端
+}
+```
+
+### 核心 API
+
+**Plugin 类生命周期:**
+```typescript
+import { Plugin } from 'obsidian';
+
+export default class OlaPlugin extends Plugin {
+  async onload() {
+    // 插件加载时调用
+    // 注册命令、设置面板、事件监听等
+  }
+
+  onunload() {
+    // 插件卸载时调用
+    // 清理资源
+  }
+}
+```
+
+**关键 API:**
+
+| API | 用途 | Ola 使用场景 |
+|-----|------|-------------|
+| `app.vault` | 访问 Vault（文件系统） | 读取/写入文档 |
+| `app.vault.getAbstractFileByPath()` | 获取文件 | 定位目标文档 |
+| `app.vault.read()` | 读取文件内容 | 获取文档内容 |
+| `app.vault.modify()` | 修改文件内容 | 写入标签 |
+| `app.metadataCache` | 元数据缓存 | 获取已有标签 |
+| `Plugin.addCommand()` | 注册命令 | `/ola new` 命令 |
+| `Plugin.addSettingTab()` | 添加设置面板 | AI 配置界面 |
+| `Modal` | 模态框 | 标签确认对话框 |
+| `Setting` | 设置项 UI | 配置表单 |
+
+### 文件操作示例
+
+```typescript
+// 读取文档
+const file = app.vault.getAbstractFileByPath('笔记/文档.md');
+const content = await app.vault.read(file);
+
+// 修改文档（添加标签）
+const newContent = content + '\n\n---\n**标签：** #AI #笔记';
+await app.vault.modify(file, newContent);
+```
+
+### 命令注册
+
+```typescript
+this.addCommand({
+  id: 'ola-tag-documents',
+  name: 'Tag Documents',
+  callback: () => {
+    this.tagDocuments();
+  }
+});
+```
+
+### 设置面板
+
+```typescript
+class OlaSettingTab extends PluginSettingTab {
+  display(): void {
+    const { containerEl } = this;
+    containerEl.empty();
+    
+    new Setting(containerEl)
+      .setName('AI Provider')
+      .setDesc('Select AI provider for tag generation')
+      .addDropdown(dropdown => dropdown
+        .addOption('bailian', '阿里云百炼')
+        .addOption('openai', 'OpenAI')
+        .setValue(this.plugin.settings.provider)
+        .onChange(async (value) => {
+          this.plugin.settings.provider = value;
+          await this.plugin.saveSettings();
+        }));
+  }
+}
+```
+
+### 与 Ola Core 集成
+
+**方案:**
+```typescript
+import { TaggerCore } from 'ola-core';
+
+class OlaPlugin extends Plugin {
+  core: TaggerCore;
+  
+  async onload() {
+    // 初始化核心逻辑
+    this.core = new TaggerCore({
+      // 使用 Obsidian 的存储适配器
+      storage: new ObsidianStorageAdapter(app),
+      // 使用 Obsidian 的文件系统适配器
+      fileSystem: new ObsidianFileSystemAdapter(app)
+    });
+    
+    // 注册命令
+    this.addCommand({
+      id: 'ola-new',
+      name: 'New Tags',
+      callback: () => this.core.tagDocuments()
+    });
+  }
+}
+```
+
+### 发布流程
+
+1. **构建:** `npm run build` → 生成 `main.js`
+2. **版本:** 更新 `manifest.json` 和 `package.json` 版本号
+3. **发布:** GitHub Release 包含:
+   - `main.js`
+   - `manifest.json`
+   - `styles.css` (可选)
+4. **社区插件:** 提交 PR 到 [obsidian-releases](https://github.com/obsidianmd/obsidian-releases)
+
+### 开发调试
+
+**热重载:**
+- 使用 [hot-reload](https://github.com/pjeby/hot-reload) 插件
+- 或手动在 Developer Console (Ctrl+Shift+I) 查看日志
+
+**本地测试:**
+```bash
+# 创建测试 Vault
+# 在 .obsidian/plugins/ 下创建软链接
+ln -s /path/to/ola-plugin ~/.obsidian/plugins/ola
+```
+
+### 参考链接
+
+- [官方文档](https://docs.obsidian.md/)
+- [API 参考](https://docs.obsidian.md/Reference/TypeScript+API/)
+- [示例插件](https://github.com/obsidianmd/obsidian-sample-plugin)
+
+---
+
+*最后更新: 2026-03-24*
+*维护者: TengShao & Asuka 💕*
 *开发路径: `/Users/teng/Drive/Project/ola`*
