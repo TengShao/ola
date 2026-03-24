@@ -1,0 +1,154 @@
+#!/usr/bin/env node
+
+/**
+ * Ola CLI 入口
+ */
+
+const { program } = require('commander');
+const Tagger = require('../src/index');
+const { Config, Database } = require('../src/config');
+const AIConfig = require('../src/ai/config');
+const chalk = require('chalk');
+
+async function run(args) {
+  // 设置命令行参数
+  process.argv = [process.argv[0], process.argv[1], ...args];
+  
+  const tagger = new Tagger();
+  const config = new Config();
+  const database = new Database();
+  const aiConfig = new AIConfig(config);
+
+  program
+    .name('ola')
+    .description('AI-powered tagging system for Obsidian notes')
+    .version('0.1.0');
+
+  // ==================== 用户命令 ====================
+
+  program
+    .command('/ola', { isDefault: true })
+    .description('主入口，询问用户需求')
+    .action(async () => {
+      await tagger.mainMenu();
+    });
+
+  program
+    .command('/ola-new')
+    .description('执行打标签主流程')
+    .action(async () => {
+      await tagger.newLabels();
+    });
+
+  program
+    .command('/ola-edit')
+    .description('修改/删除标签')
+    .action(async () => {
+      await tagger.editLabels();
+    });
+
+  program
+    .command('/ola-list')
+    .description('查看标签库及关联文档')
+    .action(async () => {
+      await tagger.listLabels();
+    });
+
+  program
+    .command('/ola-config')
+    .description('修改配置（知识库路径、目标文件夹、标签位置）')
+    .action(async () => {
+      await tagger.configMenu();
+    });
+
+  program
+    .command('/ola-reset')
+    .description('重置标签数据库，重新配置')
+    .action(async () => {
+      await tagger.reset();
+    });
+
+  // ==================== 调试命令 (内部使用) ====================
+
+  program
+    .command('/ola-dev:reset-config')
+    .description('[DEBUG] 仅重置配置，保留数据库')
+    .action(async () => {
+      console.log(chalk.yellow('[DEBUG] 重置配置...'));
+      config.delete();
+      console.log(chalk.green('✅ 配置已重置，数据库保留'));
+    });
+
+  program
+    .command('/ola-dev:reset-db')
+    .description('[DEBUG] 仅重置数据库，保留配置')
+    .action(async () => {
+      console.log(chalk.yellow('[DEBUG] 重置数据库...'));
+      database.clear();
+      console.log(chalk.green('✅ 数据库已重置，配置保留'));
+    });
+
+  program
+    .command('/ola-dev:full-reset')
+    .description('[DEBUG] 完全重置（配置+数据库）')
+    .action(async () => {
+      console.log(chalk.yellow('[DEBUG] 完全重置...'));
+      config.delete();
+      database.clear();
+      console.log(chalk.green('✅ 已完全重置'));
+    });
+
+  program
+    .command('/ola-dev:show-config')
+    .description('[DEBUG] 显示当前配置')
+    .action(async () => {
+      const cfg = config.load();
+      if (!cfg) {
+        console.log(chalk.yellow('⚠️  没有配置'));
+        return;
+      }
+      console.log(chalk.blue('\n=== 当前配置 ===\n'));
+      console.log(JSON.stringify(cfg, null, 2));
+    });
+
+  program
+    .command('/ola-dev:show-db')
+    .description('[DEBUG] 显示标签数据库')
+    .action(async () => {
+      console.log(chalk.blue('\n=== 标签数据库 ===\n'));
+      const tags = database.getAllTags();
+      console.log(`共 ${tags.length} 个标签:\n`);
+      tags.forEach(tag => {
+        const docs = database.getTagDocs(tag);
+        console.log(`${tag}: ${docs.length} 个文档`);
+      });
+    });
+
+  program
+    .command('/ola-dev:ai-config')
+    .description('[DEBUG] 配置/修改 AI 模型')
+    .action(async () => {
+      await aiConfig.configureAI();
+    });
+
+  program
+    .command('/ola-dev:ai-show')
+    .description('[DEBUG] 显示 AI 配置')
+    .action(async () => {
+      if (aiConfig.hasAIConfig()) {
+        console.log(chalk.blue('\n=== AI 配置 ===\n'));
+        console.log(`当前配置: ${aiConfig.getCurrentConfigString()}`);
+      } else {
+        console.log(chalk.yellow('⚠️  未配置 AI 模型'));
+      }
+    });
+
+  program.parse();
+}
+
+module.exports = { run };
+
+// 直接运行时
+if (require.main === module) {
+  run(process.argv.slice(2));
+}
