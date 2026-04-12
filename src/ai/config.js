@@ -32,7 +32,7 @@ class AIConfig {
   }
 
   // 保存 AI 配置
-  saveAIConfig(provider, model, apiKey, extra = {}) {
+  saveAIConfig(provider, model, apiKey, baseUrl = null, extra = {}) {
     const cfg = this.config.load();
     const providerConfig = PROVIDER_CONFIGS[provider];
     
@@ -40,7 +40,7 @@ class AIConfig {
       provider,
       model,
       apiKey, // TODO: 加密存储
-      baseUrl: providerConfig.defaultBaseUrl,
+      baseUrl: baseUrl || providerConfig.defaultBaseUrl,
       ...extra
     };
     
@@ -102,13 +102,14 @@ class AIConfig {
     }
 
     // 选择模型
-    const { model } = await this.promptForModel(provider);
-    if (model === 'back') {
+    const modelResult = await this.promptForModel(provider);
+    if (modelResult.model === 'back') {
       return;
     }
 
     // 保存配置
-    this.saveAIConfig(provider, model, apiKey);
+    const baseUrl = modelResult.isCustom ? modelResult.baseUrl : null;
+    this.saveAIConfig(provider, modelResult.model, apiKey, baseUrl);
     console.log(chalk.green('\n✅ 模型配置已保存'));
   }
 
@@ -166,6 +167,8 @@ class AIConfig {
         name: `${i + 1}. ${m.id} (${m.name})`,
         value: m.id
       })),
+      { name: '───', value: '-' },
+      { name: '0. 自定义 baseURL + model', value: 'custom' },
       { name: 'x. 返回', value: 'back' }
     ];
 
@@ -176,7 +179,46 @@ class AIConfig {
       choices
     }]);
 
+    if (model === 'custom') {
+      return this.promptForCustomModel(provider);
+    }
+
     return { model };
+  }
+
+  // 自定义 model 和 baseURL
+  async promptForCustomModel(provider) {
+    const providerConfig = PROVIDER_CONFIGS[provider];
+    
+    const { baseUrl } = await inquirer.prompt([{
+      type: 'input',
+      name: 'baseUrl',
+      message: '请输入自定义 Base URL：',
+      default: providerConfig.defaultBaseUrl,
+      validate: (input) => {
+        if (!input.trim()) {
+          return 'Base URL 不能为空';
+        }
+        if (!input.startsWith('http://') && !input.startsWith('https://')) {
+          return 'Base URL 必须以 http:// 或 https:// 开头';
+        }
+        return true;
+      }
+    }]);
+
+    const { model } = await inquirer.prompt([{
+      type: 'input',
+      name: 'model',
+      message: '请输入模型名称：',
+      validate: (input) => {
+        if (!input.trim()) {
+          return '模型名称不能为空';
+        }
+        return true;
+      }
+    }]);
+
+    return { model, baseUrl, isCustom: true };
   }
 
   // 清除 AI 配置
