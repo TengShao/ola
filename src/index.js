@@ -57,9 +57,11 @@ class Tagger {
           case 'config': await this.configMenu(); break;
           case 'reset': await this.reset(); break;
         }
+        console.log(chalk.blue('\n↩️  返回主菜单...\n'));
       } catch (error) {
         console.log(chalk.red(`\n❌ 操作出错: ${error.message}`));
         console.log(chalk.gray(error.stack));
+        console.log(chalk.blue('\n↩️  返回主菜单...\n'));
       }
     }
   }
