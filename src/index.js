@@ -308,10 +308,11 @@ class Tagger {
       targetDocs = docs;
       console.log(chalk.blue(`\n处理所有 ${docs.length} 个文档\n`));
     } else {
-      // 仅筛选未打标的文档
+      // 仅筛选未打标的文档：检查文档内容是否有标签
       targetDocs = docs.filter(doc => {
-        const mtime = Math.floor(doc.mtime / 1000);
-        return !this.database.isDocTagged(doc.relativePath, mtime);
+        const content = scanner.readDoc(doc.fullPath);
+        const existingTags = scanner.extractExistingTags(content);
+        return existingTags.length === 0;
       });
       
       if (targetDocs.length === 0) {
