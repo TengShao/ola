@@ -331,14 +331,15 @@ class Tagger {
       console.log(chalk.gray('运行 "/ola config" 可配置 AI 模型\n'));
     }
 
-    // 获取所有已有标签用于匹配
-    const existingTags = this.database.getAllTags();
     const totalDocs = targetDocs.length;
 
     for (let i = 0; i < targetDocs.length; i++) {
       const doc = targetDocs[i];
       const content = scanner.readDoc(doc.fullPath);
       const docExistingTags = scanner.extractExistingTags(content);
+      
+      // 每次处理文档前重新获取已有标签（包含刚添加的）
+      const existingTags = this.database.getAllTags();
       
       console.log(chalk.cyan(`\n📄 [${i + 1}/${totalDocs}] ${doc.relativePath}`));
       
