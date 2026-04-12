@@ -14,7 +14,7 @@ Ola 是 Obsidian 笔记的智能标签助手。我可以帮你：
 - 📋 管理标签数据库（查看、重命名、删除）
 - 🔄 同步更新所有关联文档的标签
 
-**注意**：在 Hermes 环境中，AI 生成标签由我（Asuka）使用 Hermes 内置 AI 来完成，不需要在 Ola 中配置 AI。
+**注意**：在 Hermes 环境中，AI 生成标签由 Agent 使用 Hermes 内置 AI 来完成，不需要在 Ola 中配置 AI。
 
 ## 触发词
 
@@ -93,7 +93,7 @@ node bin/ola-cli generate --path "Notes/my-note.md" --json
 }
 ```
 
-**在 Hermes 中**：我读取 `content` 字段，用 Hermes 内置 AI 分析文档内容生成标签建议，展示给用户确认后，再用 `apply` 命令写入。
+**在 Hermes 中**：Agent 读取 `content` 字段，用 Hermes 内置 AI 分析文档内容生成标签建议，展示给用户确认后，再用 `apply` 命令写入。
 
 #### 6. 应用标签到文档
 ```bash
@@ -156,23 +156,22 @@ node bin/ola-cli delete --tag "AI" --json
 
 ```
 用户：/ola new
-Asuka：
-  1. 「好的！让我先扫描一下笔记库～」
-  2. 运行 scan --untagged --json 查看未打标文档
-  3. 「找到 N 个未打标文档」
-  4. 对每个文档：
+Agent：
+  1. 运行 scan --untagged --json 查看未打标文档
+  2. 展示找到 N 个未打标文档
+  3. 对每个文档：
      a. 运行 generate --path <doc> --json 读取文档内容
      b. 用 Hermes 内置 AI 分析内容，生成标签建议
-     c. 展示建议给用户：「建议 #AI #笔记」
+     c. 展示建议给用户
      d. 用户确认后，运行 apply --path <doc> --tags "AI,笔记"
-  5. 「完成！已给 N 个文档打标签 ✅」
+  4. 完成
 ```
 
 ### 查看和管理标签
 
 ```
 用户：/ola list
-Asuka：
+Agent：
   1. 运行 list --json
   2. 展示标签列表和关联文档数量
 ```
