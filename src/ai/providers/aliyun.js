@@ -15,9 +15,7 @@ class AliyunProvider extends BaseAIProvider {
   async generateTags(document, existingTags = []) {
     const requestBody = this.buildRequestBody(document, existingTags);
     
-    console.log('🌐 Sending request to Aliyun API...');
-    console.log('   API Key:', this.apiKey ? this.apiKey.substring(0, 10) + '...' : 'NOT SET');
-    console.log('   Model:', this.model);
+    console.log(`🤖 ${this.model}...`);
     
     const response = await fetch(`${this.baseUrl}/services/aigc/text-generation/generation`, {
       method: 'POST',

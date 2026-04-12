@@ -17,10 +17,7 @@ class BailianProvider extends BaseAIProvider {
   async generateTags(document, existingTags = []) {
     const requestBody = this.buildRequestBody(document, existingTags);
     
-    console.log('🌐 Sending request to Bailian API...');
-    console.log('   API Key:', this.apiKey ? this.apiKey.substring(0, 15) + '...' : 'NOT SET');
-    console.log('   Model:', this.model);
-    console.log('   URL:', `${this.baseUrl}/chat/completions`);
+    console.log(`🤖 ${this.model}...`);
     
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
