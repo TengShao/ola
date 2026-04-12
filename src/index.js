@@ -333,12 +333,14 @@ class Tagger {
 
     // 获取所有已有标签用于匹配
     const existingTags = this.database.getAllTags();
+    const totalDocs = targetDocs.length;
 
-    for (const doc of targetDocs) {
+    for (let i = 0; i < targetDocs.length; i++) {
+      const doc = targetDocs[i];
       const content = scanner.readDoc(doc.fullPath);
       const docExistingTags = scanner.extractExistingTags(content);
       
-      console.log(chalk.cyan(`\n📄 ${doc.relativePath}`));
+      console.log(chalk.cyan(`\n📄 [${i + 1}/${totalDocs}] ${doc.relativePath}`));
       
       let finalTags = [];
       
