@@ -73,10 +73,22 @@ class Scanner {
   }
 
   hasTagSection(content) {
-    return content.includes('**标签：**') || content.includes('---');
+    return content.includes('**标签：**');
   }
 
   addTagsToDoc(content, tags, position = 'tail') {
+    // 检查是否已有标签段
+    const tagSectionMatch = content.match(/\*\*标签：\*\*\s*([^\n]*)/);
+    
+    if (tagSectionMatch) {
+      // 已有标签段，追加到现有标签
+      const existingTags = tagSectionMatch[1].trim().split(/\s+/).filter(t => t);
+      const allTags = [...new Set([...existingTags, ...tags])];
+      const newTagLine = `**标签：** ${allTags.join(' ')}`;
+      return content.replace(tagSectionMatch[0], newTagLine);
+    }
+    
+    // 没有标签段，创建新的
     const tagLine = `\n---\n\n**标签：** ${tags.join(' ')}\n`;
     
     if (position === 'head') {
