@@ -1,316 +1,217 @@
 #!/usr/bin/env node
 
 /**
- * Ola CLI 入口
+ * Ola CLI - 统一的命令行接口
  * 
- * 支持两种模式：
- * - 交互模式（无 --json 参数）：传统的 inquirer 交互
- * - JSON 模式（--json 参数）：结构化输出，适合 Hermes/脚本调用
+ * 设计原则：
+ * 1. JSON 输出为默认，方便 Agent 调用
+ * 2. 如果是 tty（终端），自动美化输出
+ * 3. 如果不带参数且是 tty，进入交互式菜单
+ * 
+ * 所有环境（Terminal / OpenClaw / Hermes）都用同一套命令
  */
 
 const { program } = require('commander');
-const { OlaAPI } = require('../src/core/api');
 const chalk = require('chalk');
+const readline = require('readline');
+const { OlaAPI } = require('../src/core/api');
 
 // 创建全局 API 实例
 const api = new OlaAPI();
 
+// 检测是否为 tty
+function isTTY() {
+  return process.stdin.isTTY;
+}
+
 // JSON 输出 helper
 function outputJSON(data) {
-  console.log(JSON.stringify(data, null, 2));
+  console.log(JSON.stringify(data));
+}
+
+// 美化输出（tty 模式）
+function output(data, options = {}) {
+  if (program.opts().json || (!isTTY() && !options.forceColor)) {
+    outputJSON(data);
+  } else {
+    // 格式化输出
+    if (Array.isArray(data)) {
+      data.forEach(item => console.log(item));
+    } else if (typeof data === 'object') {
+      console.log(JSON.stringify(data, null, 2));
+    } else {
+      console.log(data);
+    }
+  }
 }
 
 // 确保已初始化
 function ensureInit() {
   const cfg = api.getConfig();
   if (!cfg) {
-    console.error(JSON.stringify({ error: 'Not configured. Run: ola config' }));
+    const msg = { error: 'Not configured', code: 'NOT_CONFIGURED' };
+    program.opts().json ? outputJSON(msg) : console.error(chalk.red('❌ 未配置'));
     process.exit(1);
   }
   return cfg;
 }
 
-async function run(args) {
-  // 设置命令行参数
-  process.argv = [process.argv[0], process.argv[1], ...args];
+// 初始化
+api.init();
 
-  program
-    .name('ola')
-    .description('AI-powered tagging system for Obsidian notes')
-    .version('0.1.0');
+program
+  .name('ola')
+  .description('Ola - AI-powered tagging system for Obsidian notes')
+  .version('0.1.0')
+  .option('--json', '输出 JSON 格式（默认）')
+  .option('--no-json', '禁用 JSON 格式，输出美化文本');
 
-  // ==================== 交互模式命令 ====================
+// ==================== 核心命令 ====================
 
-  program
-    .command('/ola', { isDefault: true })
-    .description('主入口，询问用户需求（交互模式）')
-    .action(async () => {
-      const Tagger = require('../src/index');
-      const tagger = new Tagger();
-      await tagger.mainMenu();
-    });
+// vaults - 查找 vault
+program
+  .command('vaults')
+  .description('查找所有 Obsidian vault')
+  .action(async () => {
+    const vaults = api.findVaults();
+    output({ vaults });
+  });
 
-  program
-    .command('/ola-new')
-    .description('执行打标签主流程（交互模式）')
-    .action(async () => {
-      const Tagger = require('../src/index');
-      const tagger = new Tagger();
-      await tagger.newLabels();
-    });
+// config - 配置管理
+program
+  .command('config')
+  .description('查看或修改配置')
+  .option('--vault <path>', '设置 vault 路径')
+  .option('--folder <path>', '设置目标文件夹')
+  .option('--position <position>', '设置标签位置 (head/tail)')
+  .action(async (options) => {
+    const cfg = api.getConfig();
+    
+    // 如果没有任何选项，显示当前配置
+    if (!options.vault && !options.folder && !options.position) {
+      output({ config: cfg });
+      return;
+    }
 
-  program
-    .command('/ola-edit')
-    .description('修改/删除标签（交互模式）')
-    .action(async () => {
-      const Tagger = require('../src/index');
-      const tagger = new Tagger();
-      await tagger.editLabels();
-    });
+    // 修改配置
+    const newCfg = {
+      ...cfg,
+      vaultPath: options.vault || cfg?.vaultPath,
+      targetFolder: options.folder || cfg?.targetFolder || '/',
+      labelPosition: options.position || cfg?.labelPosition || 'tail',
+      initialized: true
+    };
+    api.saveConfig(newCfg);
+    output({ success: true, config: newCfg });
+  });
 
-  program
-    .command('/ola-list')
-    .description('查看标签库及关联文档（交互模式）')
-    .action(async () => {
-      const Tagger = require('../src/index');
-      const tagger = new Tagger();
-      await tagger.listLabels();
-    });
-
-  program
-    .command('/ola-config')
-    .description('修改配置（交互模式）')
-    .action(async () => {
-      const Tagger = require('../src/index');
-      const tagger = new Tagger();
-      await tagger.configMenu();
-    });
-
-  // ==================== JSON 模式命令 ====================
-
-  // scan - 扫描文档
-  program
-    .command('scan')
-    .description('扫描文件夹中的文档')
-    .option('--folder <path>', '文件夹路径（相对于 vault）', '/')
-    .option('--json', '输出 JSON 格式')
-    .option('--untagged', '仅返回未打标文档')
-    .action(async (options) => {
-      const cfg = api.getConfig();
-      if (!cfg) {
-        const msg = { error: 'Not configured', code: 'NOT_CONFIGURED' };
-        options.json ? outputJSON(msg) : console.error(chalk.red('❌ 未配置'));
-        process.exit(1);
-      }
-
-      const docs = await api.scan(options.folder);
-      
-      if (options.untagged) {
-        const untagged = api.getUntagged(docs);
-        const result = { folder: options.folder, total: docs.length, untagged: untagged.length, docs: untagged };
-        options.json ? outputJSON(result) : console.log(`发现 ${untagged.length} 个未打标文档（共 ${docs.length} 个）`);
-      } else {
-        const result = { folder: options.folder, total: docs.length, docs };
-        options.json ? outputJSON(result) : console.log(`找到 ${docs.length} 个文档`);
-      }
-    });
-
-  // generate - 生成标签
-  program
-    .command('generate')
-    .description('为文档生成标签建议')
-    .requiredOption('--path <path>', '文档路径')
-    .option('--json', '输出 JSON 格式')
-    .action(async (options) => {
-      ensureInit();
-
-      const result = await api.generateTags(options.path);
-      options.json 
-        ? outputJSON(result)
-        : console.log(`已有标签: ${result.existingTags.join(' ')}\n建议: ${result.suggestedTags.map(t => t.tag).join(' ')}`);
-    });
-
-  // apply - 应用标签
-  program
-    .command('apply')
-    .description('应用标签到文档')
-    .requiredOption('--path <path>', '文档路径')
-    .requiredOption('--tags <tags>', '标签（逗号分隔）', val => val.split(','))
-    .option('--position <position>', '位置', 'tail')
-    .option('--json', '输出 JSON 格式')
-    .action(async (options) => {
-      const cfg = ensureInit();
-      const tags = options.tags.map(t => t.startsWith('#') ? t : '#' + t);
-      
-      const result = api.applyTags(options.path, tags, options.position);
-      options.json 
-        ? outputJSON(result)
-        : console.log(chalk.green(`✅ 已添加 ${result.tagCount} 个标签`));
-    });
-
-  // list - 列出标签
-  program
-    .command('list')
-    .description('列出所有标签')
-    .option('--json', '输出 JSON 格式')
-    .action(async (options) => {
-      const tags = api.listTags();
-      options.json 
-        ? outputJSON({ tags })
-        : tags.forEach(t => console.log(`${t.name} (${t.docCount} 个文档)`));
-    });
-
-  // rename - 重命名标签
-  program
-    .command('rename')
-    .description('重命名标签')
-    .requiredOption('--old <tag>', '旧标签')
-    .requiredOption('--new <tag>', '新标签')
-    .option('--json', '输出 JSON 格式')
-    .action(async (options) => {
-      ensureInit();
-      const oldTag = options.old.startsWith('#') ? options.old : '#' + options.old;
-      const newTag = options.new.startsWith('#') ? options.new : '#' + options.new;
-      
-      const result = api.renameTag(oldTag, newTag);
-      options.json
-        ? outputJSON(result)
-        : console.log(chalk.green(`✅ 已将 ${oldTag} 重命名为 ${newTag}（更新了 ${result.docCount} 个文档）`));
-    });
-
-  // delete - 删除标签
-  program
-    .command('delete')
-    .description('删除标签')
-    .requiredOption('--tag <tag>', '要删除的标签')
-    .option('--json', '输出 JSON 格式')
-    .action(async (options) => {
-      ensureInit();
-      const tag = options.tag.startsWith('#') ? options.tag : '#' + options.tag;
-      
-      const result = api.deleteTag(tag);
-      options.json
-        ? outputJSON(result)
-        : console.log(chalk.green(`✅ 已删除 ${tag}（从 ${result.docCount} 个文档中移除）`));
-    });
-
-  // config - 配置管理
-  program
-    .command('config')
-    .description('查看或修改配置')
-    .option('--vault <path>', '设置 vault 路径')
-    .option('--folder <path>', '设置目标文件夹')
-    .option('--position <position>', '设置标签位置 (head/tail)')
-    .option('--json', '输出 JSON 格式')
-    .action(async (options) => {
-      const cfg = api.getConfig();
-      
-      if (options.json) {
-        outputJSON({ config: cfg });
-        return;
-      }
-
-      if (options.vault || options.folder || options.position) {
-        // 修改配置
-        const newCfg = {
-          ...cfg,
-          vaultPath: options.vault || cfg?.vaultPath,
-          targetFolder: options.folder || cfg?.targetFolder || '/',
-          labelPosition: options.position || cfg?.labelPosition || 'tail',
-          initialized: true
-        };
-        api.saveConfig(newCfg);
-        console.log(chalk.green('✅ 配置已更新'));
-      } else {
-        // 显示配置
-        if (cfg) {
-          console.log(chalk.blue('\n=== 当前配置 ===\n'));
-          console.log(`Vault: ${cfg.vaultPath}`);
-          console.log(`Folder: ${cfg.targetFolder}`);
-          console.log(`Position: ${cfg.labelPosition}`);
-        } else {
-          console.log(chalk.yellow('⚠️  未配置'));
-        }
-      }
-    });
-
-  // vaults - 查找 vault
-  program
-    .command('vaults')
-    .description('查找所有 Obsidian vault')
-    .option('--json', '输出 JSON 格式')
-    .action(async (options) => {
-      const vaults = api.findVaults();
-      options.json
-        ? outputJSON({ vaults })
-        : vaults.forEach(v => console.log(`${v.name}: ${v.path}`));
-    });
-
-  // ==================== 调试命令 ====================
-
-  program
-    .command('/ola-dev:reset-config')
-    .description('[DEBUG] 仅重置配置，保留数据库')
-    .action(async () => {
-      const { Config } = require('../src/config');
-      const config = new Config();
-      config.delete();
-      console.log(chalk.green('✅ 配置已重置，数据库保留'));
-    });
-
-  program
-    .command('/ola-dev:reset-db')
-    .description('[DEBUG] 仅重置数据库，保留配置')
-    .action(async () => {
-      const { Database } = require('../src/config');
-      const database = new Database();
-      database.clear();
-      console.log(chalk.green('✅ 数据库已重置，配置保留'));
-    });
-
-  program
-    .command('/ola-dev:full-reset')
-    .description('[DEBUG] 完全重置（配置+数据库）')
-    .action(async () => {
-      const { Config, Database } = require('../src/config');
-      const config = new Config();
-      const database = new Database();
-      config.delete();
-      database.clear();
-      console.log(chalk.green('✅ 已完全重置'));
-    });
-
-  program
-    .command('/ola-dev:show-config')
-    .description('[DEBUG] 显示当前配置')
-    .action(async () => {
-      const cfg = api.getConfig();
-      if (!cfg) {
-        console.log(chalk.yellow('⚠️  没有配置'));
-        return;
-      }
-      console.log(chalk.blue('\n=== 当前配置 ===\n'));
-      console.log(JSON.stringify(cfg, null, 2));
-    });
-
-  program
-    .command('/ola-dev:show-db')
-    .description('[DEBUG] 显示标签数据库')
-    .action(async () => {
-      const tags = api.listTags();
-      console.log(chalk.blue('\n=== 标签数据库 ===\n'));
-      console.log(`共 ${tags.length} 个标签:\n`);
-      tags.forEach(tag => {
-        console.log(`${tag.name}: ${tag.docCount} 个文档`);
+// scan - 扫描文档
+program
+  .command('scan')
+  .description('扫描文件夹中的文档')
+  .option('--folder <path>', '文件夹路径（相对于 vault）', '/')
+  .option('--untagged', '仅返回未打标文档')
+  .action(async (options) => {
+    const cfg = ensureInit();
+    const docs = await api.scan(options.folder);
+    
+    if (options.untagged) {
+      const untagged = api.getUntagged(docs);
+      output({ 
+        folder: options.folder, 
+        total: docs.length, 
+        untagged: untagged.length, 
+        docs: untagged 
       });
-    });
+    } else {
+      output({ folder: options.folder, total: docs.length, docs });
+    }
+  });
 
-  program.parse();
-}
+// suggest - 生成标签建议
+program
+  .command('suggest')
+  .description('为文档生成标签建议（需要 AI 配置）')
+  .requiredOption('--path <path>', '文档路径（相对于 vault）')
+  .action(async (options) => {
+    ensureInit();
+    
+    const result = await api.generateTags(options.path);
+    output(result);
+  });
 
-module.exports = { run };
+// tag - 应用标签
+program
+  .command('tag')
+  .description('应用标签到文档')
+  .requiredOption('--path <path>', '文档路径（相对于 vault）')
+  .requiredOption('--tags <tags>', '标签（逗号分隔）')
+  .option('--position <position>', '位置', 'tail')
+  .action(async (options) => {
+    ensureInit();
+    
+    const tags = options.tags.split(',').map(t => t.trim()).map(t => t.startsWith('#') ? t : '#' + t);
+    const result = api.applyTags(options.path, tags, options.position);
+    output(result);
+  });
 
-// 直接运行时
-if (require.main === module) {
-  run(process.argv.slice(2));
-}
+// list - 列出标签
+program
+  .command('list')
+  .description('列出所有标签')
+  .action(async () => {
+    const tags = api.listTags();
+    output({ tags });
+  });
+
+// rename - 重命名标签
+program
+  .command('rename')
+  .description('重命名标签')
+  .requiredOption('--old <tag>', '旧标签')
+  .requiredOption('--new <tag>', '新标签')
+  .action(async (options) => {
+    ensureInit();
+    
+    const oldTag = options.old.startsWith('#') ? options.old : '#' + options.old;
+    const newTag = options.new.startsWith('#') ? options.new : '#' + options.new;
+    
+    const result = api.renameTag(oldTag, newTag);
+    output(result);
+  });
+
+// delete - 删除标签
+program
+  .command('delete')
+  .description('删除标签')
+  .requiredOption('--tag <tag>', '要删除的标签')
+  .action(async (options) => {
+    ensureInit();
+    
+    const tag = options.tag.startsWith('#') ? options.tag : '#' + options.tag;
+    const result = api.deleteTag(tag);
+    output(result);
+  });
+
+// ==================== 交互模式 ====================
+
+// 如果没有参数且是 tty，进入交互模式
+program.action(async () => {
+  const args = process.argv.slice(2);
+  
+  if (args.length === 0 && isTTY()) {
+    // 进入交互式菜单
+    const Tagger = require('../src/index');
+    const tagger = new Tagger();
+    await tagger.mainMenu();
+  } else if (args.length === 0) {
+    // 非 tty 模式，显示帮助
+    program.help();
+  } else {
+    // 有参数但无法识别
+    console.error(chalk.red(`❌ 未知命令: ${args.join(' ')}`));
+    program.help();
+  }
+});
+
+program.parse();

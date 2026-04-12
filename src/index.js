@@ -84,9 +84,10 @@ class Tagger {
       
       if (vaultIndex === 'custom') {
         selectedVault = await this.promptForCustomVault();
-        // 用户选择返回，重新显示知识库列表
+        // 用户选择返回，退出设置
         if (selectedVault === null) {
-          continue;
+          console.log(chalk.yellow('已取消设置'));
+          return;
         }
       } else {
         selectedVault = vaults[vaultIndex];
