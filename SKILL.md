@@ -9,10 +9,12 @@ description: AI 驱动的 Obsidian 笔记标签系统 - 扫描文档、生成标
 
 Ola 是 Obsidian 笔记的智能标签助手。我可以帮你：
 - 🔍 扫描知识库中的文档
-- 🤖 用 AI 分析文档内容，生成合适的标签建议
+- 📄 读取文档内容
 - 🏷️ 将标签写入文档
 - 📋 管理标签数据库（查看、重命名、删除）
 - 🔄 同步更新所有关联文档的标签
+
+**注意**：在 Hermes 环境中，AI 生成标签由我（Asuka）使用 Hermes 内置 AI 来完成，不需要在 Ola 中配置 AI。
 
 ## 触发词
 
@@ -76,23 +78,22 @@ node bin/ola-cli scan --folder "/" --untagged --json
 }
 ```
 
-#### 5. 生成标签建议
+#### 5. 读取文档内容（用于生成标签）
 ```bash
 node bin/ola-cli generate --path "Notes/my-note.md" --json
 ```
-返回：
+返回文档内容和已有标签：
 ```json
 {
   "path": "Notes/my-note.md",
   "content": "文档内容...",
   "existingTags": ["#笔记"],
-  "suggestedTags": [
-    { "tag": "#AI", "status": "new" },
-    { "tag": "#机器学习", "status": "new" }
-  ],
-  "summary": "这是一篇关于机器学习的笔记"
+  "suggestedTags": [],
+  "summary": null
 }
 ```
+
+**在 Hermes 中**：我读取 `content` 字段，用 Hermes 内置 AI 分析文档内容生成标签建议，展示给用户确认后，再用 `apply` 命令写入。
 
 #### 6. 应用标签到文档
 ```bash
@@ -151,7 +152,7 @@ node bin/ola-cli delete --tag "AI" --json
 
 ## 典型工作流程
 
-### 给未打标文档打标签
+### 给未打标文档打标签（Hermes 模式）
 
 ```
 用户：/ola new
@@ -160,9 +161,10 @@ Asuka：
   2. 运行 scan --untagged --json 查看未打标文档
   3. 「找到 N 个未打标文档」
   4. 对每个文档：
-     a. 运行 generate --path <doc> --json 获取标签建议
-     b. 展示建议给用户：「建议 #AI #笔记」
-     c. 用户确认后，运行 apply --path <doc> --tags "AI,笔记"
+     a. 运行 generate --path <doc> --json 读取文档内容
+     b. 用 Hermes 内置 AI 分析内容，生成标签建议
+     c. 展示建议给用户：「建议 #AI #笔记」
+     d. 用户确认后，运行 apply --path <doc> --tags "AI,笔记"
   5. 「完成！已给 N 个文档打标签 ✅」
 ```
 
