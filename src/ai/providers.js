@@ -73,10 +73,11 @@ const PROVIDER_CONFIGS = {
   minimax: {
     name: 'MiniMax',
     defaultBaseUrl: 'https://api.minimax.chat/v1',
-    defaultModel: 'abab6.5-chat',
+    defaultModel: 'MiniMax-M2.7-highspeed',
     envKey: 'MINIMAX_API_KEY',
     docs: 'https://www.minimaxi.com/document',
     models: [
+      { id: 'MiniMax-M2.7-highspeed', name: 'MiniMax M2.7 Highspeed' },
       { id: 'abab6.5-chat', name: 'abab6.5 Chat' },
       { id: 'abab6-chat', name: 'abab6 Chat' }
     ],
