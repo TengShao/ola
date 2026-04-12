@@ -49,12 +49,17 @@ class Tagger {
         return;
       }
 
-      switch (action) {
-        case 'new': await this.newLabels(); break;
-        case 'edit': await this.editLabels(); break;
-        case 'list': await this.listLabels(); break;
-        case 'config': await this.configMenu(); break;
-        case 'reset': await this.reset(); break;
+      try {
+        switch (action) {
+          case 'new': await this.newLabels(); break;
+          case 'edit': await this.editLabels(); break;
+          case 'list': await this.listLabels(); break;
+          case 'config': await this.configMenu(); break;
+          case 'reset': await this.reset(); break;
+        }
+      } catch (error) {
+        console.log(chalk.red(`\n❌ 操作出错: ${error.message}`));
+        console.log(chalk.gray(error.stack));
       }
     }
   }
