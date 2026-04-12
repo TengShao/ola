@@ -7,10 +7,10 @@ description: AI 驱动的 Obsidian 笔记标签系统 - 扫描文档、生成标
 
 ## 我是什么
 
-Ola 是你的 Obsidian 笔记智能标签助手。我可以帮你：
-- 🔍 扫描 Obsidian 知识库中的文档
-- 🤖 用 AI 分析文档内容，生成合适的标签
-- 🏷️ 将标签写入文档（头部或尾部）
+Ola 是 Obsidian 笔记的智能标签助手。我可以帮你：
+- 🔍 扫描知识库中的文档
+- 🤖 用 AI 分析文档内容，生成合适的标签建议
+- 🏷️ 将标签写入文档
 - 📋 管理标签数据库（查看、重命名、删除）
 - 🔄 同步更新所有关联文档的标签
 
@@ -18,86 +18,161 @@ Ola 是你的 Obsidian 笔记智能标签助手。我可以帮你：
 
 | 触发词 | 说明 |
 |--------|------|
-| `/ola` | 主入口，询问你想做什么 |
-| `/ola new` | 扫描并给未打标的文档打标签 |
-| `/ola list` | 查看所有标签及关联文档 |
-| `/ola edit` | 编辑/重命名/删除标签 |
-| `/ola config` | 查看/修改配置 |
+| `/ola` | 主入口，询问你想做什么（交互模式） |
+| `/ola new` | 执行打标签主流程（交互模式） |
+| `/ola list` | 查看标签列表（交互模式） |
+| `/ola edit` | 编辑/删除标签（交互模式） |
 
-## 工作流程
+## JSON API 命令
 
-### `/ola new` — 打标签流程
+Ola 提供 JSON 模式的命令行接口，适合 Agent 调用。所有命令都支持 `--json` 参数。
 
-**第一步：确认配置**
+### 工作目录
 ```
-读取 ~/.hermes/skills/ola/config.json
-- vaultPath: Obsidian 知识库路径
-- targetFolder: 目标文件夹
-- labelPosition: 标签位置（head/tail）
+/Users/teng/Drive/Project/ola
 ```
-如果配置不存在，询问用户：
-1. 选择 Obsidian 知识库
-2. 选择目标文件夹
-3. 选择标签位置（头部/尾部）
 
-**第二步：扫描文档**
+### 命令列表
+
+#### 1. 查找 Vault
 ```bash
-# 扫描目标文件夹中的所有 .md 文档
-vault="你的vault路径"
-target="目标文件夹路径"
-find "$vault/$target" -name "*.md" -not -path "*/.obsidian/*"
+node bin/ola-cli vaults --json
 ```
-
-**第三步：筛选未打标文档**
-检查 `~/.hermes/skills/ola/tag-database.json`，排除已打标且 mtime 未变化的文档。
-
-**第四步：AI 生成标签**
-读取每个文档内容，调用 AI（如果有配置）或根据文档内容手动生成标签。
-
-**第五步：写入标签**
-标签格式：
-```markdown
----
-
-**标签：** #AI #笔记
-```
-添加到文档头部（`head`）或尾部（`tail`）。
-
-**第六步：更新数据库**
+返回：
 ```json
-// ~/.hermes/skills/ola/tag-database.json
 {
-  "tags": {
-    "#AI": { "docs": [{ "path": "笔记路径.md", "mtime": 1234567890 }] },
-    "#笔记": { "docs": [{ "path": "笔记路径.md", "mtime": 1234567890 }] }
-  }
+  "vaults": [
+    { "name": "Teng's Brain", "path": "/Users/teng/Library/Mobile Documents/iCloud~md~obsidian/Documents/Teng's Brain" }
+  ]
 }
 ```
 
-### `/ola list` — 查看标签
+#### 2. 查看配置
+```bash
+node bin/ola-cli config --json
+```
 
-读取 `tag-database.json`，展示所有标签及其关联文档数量。
+#### 3. 配置 Ola（设置 vault 和文件夹）
+```bash
+node bin/ola-cli config --vault "/path/to/vault" --folder "Notes"
+```
 
-### `/ola edit` — 编辑标签
+#### 4. 扫描文档
+```bash
+# 扫描所有文档
+node bin/ola-cli scan --folder "/" --json
 
-选择一个标签后：
-- **重命名**：替换所有关联文档中的标签，更新数据库
-- **删除**：移除所有关联文档中的标签，从数据库删除
+# 仅扫描未打标文档
+node bin/ola-cli scan --folder "/" --untagged --json
+```
+返回：
+```json
+{
+  "folder": "/",
+  "total": 10,
+  "docs": [
+    { "fullPath": "/path/to/doc.md", "relativePath": "doc.md", "mtime": 1234567890 }
+  ]
+}
+```
 
-## 核心文件位置
+#### 5. 生成标签建议
+```bash
+node bin/ola-cli generate --path "Notes/my-note.md" --json
+```
+返回：
+```json
+{
+  "path": "Notes/my-note.md",
+  "content": "文档内容...",
+  "existingTags": ["#笔记"],
+  "suggestedTags": [
+    { "tag": "#AI", "status": "new" },
+    { "tag": "#机器学习", "status": "new" }
+  ],
+  "summary": "这是一篇关于机器学习的笔记"
+}
+```
+
+#### 6. 应用标签到文档
+```bash
+node bin/ola-cli apply --path "Notes/my-note.md" --tags "AI,笔记" --position tail --json
+```
+返回：
+```json
+{
+  "success": true,
+  "path": "Notes/my-note.md",
+  "tags": ["#AI", "#笔记"],
+  "tagCount": 2
+}
+```
+
+#### 7. 列出所有标签
+```bash
+node bin/ola-cli list --json
+```
+返回：
+```json
+{
+  "tags": [
+    { "name": "#AI", "docCount": 5, "docs": [...] },
+    { "name": "#笔记", "docCount": 3, "docs": [...] }
+  ]
+}
+```
+
+#### 8. 重命名标签
+```bash
+node bin/ola-cli rename --old "AI" --new "人工智能" --json
+```
+返回：
+```json
+{
+  "success": true,
+  "oldTag": "#AI",
+  "newTag": "#人工智能",
+  "docCount": 5
+}
+```
+
+#### 9. 删除标签
+```bash
+node bin/ola-cli delete --tag "AI" --json
+```
+返回：
+```json
+{
+  "success": true,
+  "tag": "#AI",
+  "docCount": 5
+}
+```
+
+## 典型工作流程
+
+### 给未打标文档打标签
 
 ```
-~/.hermes/skills/ola/
-├── config.json          # 配置文件（vaultPath, targetFolder, labelPosition）
-├── tag-database.json    # 标签数据库
-├── src/
-│   ├── config.js        # Config + Database 类
-│   ├── scanner.js       # Scanner 类（文件扫描、标签读写）
-│   ├── ai/
-│   │   ├── config.js    # AIConfig 类
-│   │   └── providers/   # AI 提供商实现
-│   └── core/
-│       └── tagger-core.js  # TaggerCore 核心逻辑
+用户：/ola new
+Asuka：
+  1. 「好的！让我先扫描一下笔记库～」
+  2. 运行 scan --untagged --json 查看未打标文档
+  3. 「找到 N 个未打标文档」
+  4. 对每个文档：
+     a. 运行 generate --path <doc> --json 获取标签建议
+     b. 展示建议给用户：「建议 #AI #笔记」
+     c. 用户确认后，运行 apply --path <doc> --tags "AI,笔记"
+  5. 「完成！已给 N 个文档打标签 ✅」
+```
+
+### 查看和管理标签
+
+```
+用户：/ola list
+Asuka：
+  1. 运行 list --json
+  2. 展示标签列表和关联文档数量
 ```
 
 ## 标签格式
@@ -108,37 +183,47 @@ find "$vault/$target" -name "*.md" -not -path "*/.obsidian/*"
 **标签：** #标签1 #标签2
 ```
 
-## AI 配置
+## 核心文件位置
 
-Ola 支持多个 AI 提供商。在 `config.json` 中配置：
+```
+ola/
+├── bin/
+│   └── ola-cli           # CLI 入口
+├── src/
+│   ├── core/
+│   │   ├── api.js       # Core API（业务逻辑层）
+│   │   └── index.js     # TagGenerator 导出
+│   ├── scanner.js        # 文件扫描、标签读写
+│   ├── config.js         # Config + Database
+│   └── ai/
+│       └── config.js     # AI 模型配置
+└── SKILL.md             # 本文件
+```
+
+## 配置
+
+Ola 的配置文件在 `~/.ola/config.json`（CLI 模式）或根据环境变量确定。
+
+**配置结构：**
 ```json
 {
-  "ai": {
-    "provider": "bailian",
-    "model": "qwen-plus",
-    "apiKey": "your-api-key",
-    "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1"
-  }
+  "vaultPath": "/path/to/vault",
+  "vaultName": "My Vault",
+  "targetFolder": "/",
+  "labelPosition": "tail",
+  "initialized": true
 }
 ```
 
-**支持的提供商**：bailian（阿里云百炼）、siliconflow、deepseek、openai、anthropic、ollama（本地）等。
+**AI 配置：** 存储在 `~/.ola/ai-config.json`
 
 ## 注意事项
 
-1. **交互式 CLI 无法在 Hermes 中直接调用** — Ola 的交互式 inquirer 流程不适用于 Hermes。请按照本 SKILL.md 的步骤，作为智能助手帮助用户完成标签工作。
-2. **mtime 检查** — 只有文档 mtime 发生变化时才重新打标，避免重复处理。
-3. **标签去重** — 已有标签不会重复添加。
-4. **批量处理** — 建议逐个文档处理，给用户确认的机会。
+1. **标签自动补全 `#`** — 输入标签时不需要手动加 `#`，会自动补全
+2. **mtime 检查** — 只有文档 mtime 发生变化时才重新打标
+3. **标签去重** — 已有标签不会重复添加
+4. **相对路径** — `--path` 参数使用相对于 vault 的路径
 
-## 使用示例
+## 状态管理
 
-```
-用户：/ola new
-Asuka：
-  1. 「好的！让我先检查一下配置～」
-  2. 读取 config.json，确认 vault 和 targetFolder
-  3. 「找到 5 个未打标文档，开始处理～」
-  4. 逐个读取文档 → AI 生成标签 → 展示建议 → 用户确认 → 写入
-  5. 「完成！已给 5 个文档打标签 ✅」
-```
+Hermes 通过对话上下文管理状态，不需要 Ola 额外处理。Ola 每次调用都是独立的，返回结构化数据，由 Agent（我）来管理多轮对话。
