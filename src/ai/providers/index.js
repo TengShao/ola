@@ -1,6 +1,7 @@
 const AliyunProvider = require('./aliyun');
 const BailianProvider = require('./bailian');
 const SiliconFlowProvider = require('./siliconflow');
+const GenericProvider = require('./generic');
 
 /**
  * AI 提供商工厂
@@ -17,13 +18,9 @@ class ProviderFactory {
         return new BailianProvider(providerConfig);
       case 'siliconflow':
         return new SiliconFlowProvider(providerConfig);
-      // TODO: 添加其他提供商
-      // case 'openai':
-      //   return new OpenAIProvider(providerConfig);
-      // case 'kimi':
-      //   return new KimiProvider(providerConfig);
+      // 其他 provider 都用通用实现（支持自定义 baseURL + model）
       default:
-        throw new Error(`Unknown provider: ${provider}`);
+        return new GenericProvider(providerConfig);
     }
   }
 }
