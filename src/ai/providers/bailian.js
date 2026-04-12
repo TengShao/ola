@@ -1,4 +1,5 @@
 const BaseAIProvider = require('./base');
+const chalk = require('chalk');
 
 /**
  * 阿里云百炼 (Bailian) 提供商
@@ -17,7 +18,7 @@ class BailianProvider extends BaseAIProvider {
   async generateTags(document, existingTags = []) {
     const requestBody = this.buildRequestBody(document, existingTags);
     
-    console.log(`🤖 当前模型：${this.model}...`);
+    console.log(chalk.gray(`🤖 当前模型：${this.model}...`));
     
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
