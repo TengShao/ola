@@ -2,7 +2,29 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const CONFIG_DIR = path.join(os.homedir(), '.hermes', 'skills', 'ola');
+/**
+ * 检测运行环境，返回对应的配置目录
+ * - OPENCLAW_SESSION / OPENCLAW_GATEWAY → ~/.openclaw/skills/ola
+ * - HERMES_HOME / HERMES_ENV → ~/.hermes/skills/ola
+ * - CLI 模式 → ~/.ola
+ */
+function getConfigDir() {
+  // OpenClaw 环境
+  if (process.env.OPENCLAW_SESSION || process.env.OPENCLAW_GATEWAY) {
+    return path.join(os.homedir(), '.openclaw', 'skills', 'ola');
+  }
+
+  // Hermes 环境
+  if (process.env.HERMES_HOME || process.env.HERMES_ENV || process.env.HERMES_GATEWAY) {
+    return path.join(os.homedir(), '.hermes', 'skills', 'ola');
+  }
+
+  // CLI 默认
+  return path.join(os.homedir(), '.ola');
+}
+
+// 动态获取配置目录
+const CONFIG_DIR = getConfigDir();
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 const DATABASE_FILE = path.join(CONFIG_DIR, 'tag-database.json');
 

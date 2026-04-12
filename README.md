@@ -77,8 +77,8 @@ Use in OpenClaw:
 
 ## Configuration
 
-- Config file: `~/.hermes/skills/ola/config.json`
-- Tag database: `~/.hermes/skills/ola/tag-database.json`
+- Config file: `~/.openclaw/skills/ola/config.json` (OpenClaw) / `~/.hermes/skills/ola/config.json` (Hermes) / `~/.ola/config.json` (CLI)
+- Tag database: Same directory as config file
 
 ## Tag Format
 
@@ -169,8 +169,8 @@ ola /ola-reset
 
 ## 配置说明
 
-- 配置文件：`~/.hermes/skills/ola/config.json`
-- 标签数据库：`~/.hermes/skills/ola/tag-database.json`
+- 配置文件：动态路径（OpenClaw: `~/.openclaw/skills/ola/`，Hermes: `~/.hermes/skills/ola/`，CLI: `~/.ola/`）
+- 标签数据库：与配置文件同目录
 
 ## 标签格式
 
