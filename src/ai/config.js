@@ -111,6 +111,55 @@ class AIConfig {
     const baseUrl = modelResult.isCustom ? modelResult.baseUrl : null;
     this.saveAIConfig(provider, modelResult.model, apiKey, baseUrl);
     console.log(chalk.green('\n✅ 模型配置已保存'));
+
+    // 验证连接
+    console.log(chalk.blue('\n🔍 正在验证连接...'));
+    const verified = await this.verifyConnection();
+    
+    if (verified) {
+      console.log(chalk.green('✅ 连接验证成功！'));
+    } else {
+      console.log(chalk.red('❌ 连接验证失败，请检查配置是否正确'));
+      const { retry } = await inquirer.prompt([{
+        type: 'list',
+        name: 'retry',
+        message: '是否重新配置？',
+        choices: [
+          { name: '1. 是', value: true },
+          { name: '2. 否（稍后手动配置）', value: false }
+        ]
+      }]);
+      
+      if (retry) {
+        // 重新运行配置流程
+        this.clearAIConfig();
+        return this.configureAI();
+      }
+    }
+  }
+
+  // 验证 AI 连接
+  async verifyConnection() {
+    try {
+      const aiCfg = this.getCurrentConfig();
+      if (!aiCfg) return false;
+
+      const generator = this.createTagGenerator();
+      
+      // 用一个简单的测试请求
+      const testDoc = {
+        path: '__test__.md',
+        content: '这是一个测试文档，用于验证 AI 连接是否正常。'
+      };
+      
+      const result = await generator.generate(testDoc, { existingTags: [], docTags: [] });
+      
+      // 如果能返回结果，说明连接成功
+      return result && result.tags !== undefined;
+    } catch (error) {
+      console.log(chalk.red(`   错误: ${error.message}`));
+      return false;
+    }
   }
 
   // 选择供应商
