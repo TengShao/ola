@@ -308,12 +308,31 @@ class Tagger {
       targetDocs = docs;
       console.log(chalk.blue(`\n处理所有 ${docs.length} 个文档\n`));
     } else {
-      // 仅筛选未打标的文档：检查文档内容是否有标签
-      targetDocs = docs.filter(doc => {
+      // 仅筛选未打标的文档：数据库 + 内容双重验证
+      targetDocs = [];
+      
+      for (const doc of docs) {
+        const mtime = Math.floor(doc.mtime / 1000);
+        const inDatabase = this.database.isDocTagged(doc.relativePath, mtime);
+        
+        if (inDatabase) {
+          // 数据库已记录且 mtime 匹配，跳过
+          continue;
+        }
+        
+        // 数据库没有记录或 mtime 不匹配，检查文档内容
         const content = scanner.readDoc(doc.fullPath);
         const existingTags = scanner.extractExistingTags(content);
-        return existingTags.length === 0;
-      });
+        
+        if (existingTags.length === 0) {
+          targetDocs.push(doc);
+        } else {
+          // 已有标签，更新数据库记录
+          for (const tag of existingTags) {
+            this.database.addTag(tag, { path: doc.relativePath, mtime });
+          }
+        }
+      }
       
       if (targetDocs.length === 0) {
         console.log(chalk.yellow('❗️ 所有文档都已打标！'));
