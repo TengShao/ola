@@ -329,7 +329,7 @@ class Tagger {
         } else {
           // 已有标签，更新数据库记录
           for (const tag of existingTags) {
-            this.database.addTag(tag, { path: doc.relativePath, mtime });
+            this.database.addTag(tag, doc.relativePath, mtime);
           }
         }
       }
@@ -558,10 +558,7 @@ class Tagger {
     for (const docInfo of docs) {
       const fullPath = path.join(cfg.vaultPath, docInfo.path);
       const content = scanner.readDoc(fullPath);
-      const newContent = content.replace(
-        new RegExp(oldTag.replace('#', '\\#'), 'g'),
-        newTag
-      );
+      const newContent = scanner.renameTagInDoc(content, oldTag, newTag);
       scanner.writeDoc(fullPath, newContent);
     }
 

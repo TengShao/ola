@@ -7,7 +7,6 @@ const path = require('path');
 const { Config, Database } = require('../config');
 const Scanner = require('../scanner');
 const AIConfig = require('../ai/config');
-const { TagGenerator } = require('../core');
 const OpenClawStateManager = require('./state-manager');
 const OpenClawFormatter = require('./formatter');
 
@@ -74,33 +73,36 @@ class OpenClawHandler {
     // 创建状态
     const state = this.stateManager.createState(sessionId, {
       cfg,
-      scanner,
       docs: pendingDocs,
       currentIndex: 0,
       results: [],
-      existingTags: this.database.getAllTags()
+      existingTags: this.database.getAllTags(),
+      useAI: this.aiConfig.hasAIConfig()
     });
-
-    // 检查 AI 配置
-    let tagGenerator = null;
-    if (this.aiConfig.hasAIConfig()) {
-      try {
-        tagGenerator = this.aiConfig.createTagGenerator({ maxTags: 5 });
-      } catch (e) {
-        // AI 配置错误，使用手动模式
-      }
-    }
-    state.data.tagGenerator = tagGenerator;
 
     // 处理第一个文档
     return this.processNextDoc(sessionId, state);
+  }
+
+  createTagGenerator(shouldUseAI) {
+    if (!shouldUseAI || !this.aiConfig.hasAIConfig()) {
+      return null;
+    }
+
+    try {
+      return this.aiConfig.createTagGenerator({ maxTags: 5 });
+    } catch (error) {
+      return null;
+    }
   }
 
   /**
    * 处理下一个文档
    */
   async processNextDoc(sessionId, state) {
-    const { docs, currentIndex, tagGenerator, existingTags, scanner } = state.data;
+    const { cfg, docs, currentIndex, existingTags, useAI } = state.data;
+    const scanner = new Scanner(cfg.vaultPath);
+    const tagGenerator = this.createTagGenerator(useAI);
     
     if (currentIndex >= docs.length) {
       // 所有文档处理完成
@@ -129,6 +131,7 @@ class OpenClawHandler {
         
         state.data.currentResult = result;
         state.step = 'confirm_tags';
+        this.stateManager.updateState(sessionId, state);
         
         // 返回确认消息
         return {
@@ -142,12 +145,14 @@ class OpenClawHandler {
         
       } catch (error) {
         // AI 失败，切换到手动模式
-        state.data.tagGenerator = null;
+        state.data.useAI = false;
+        this.stateManager.updateState(sessionId, state);
       }
     }
 
     // 手动输入模式
     state.step = 'input_manual';
+    this.stateManager.updateState(sessionId, state);
     return {
       type: 'input',
       message: OpenClawFormatter.formatManualInput(docExistingTags.length > 0)
@@ -167,6 +172,7 @@ class OpenClawHandler {
       // 跳过当前文档，处理下一个
       state.data.currentIndex++;
       state.step = 'idle';
+      this.stateManager.updateState(sessionId, state);
       return this.processNextDoc(sessionId, state);
     }
     
@@ -179,6 +185,7 @@ class OpenClawHandler {
     if (input === '2' || input === '部分添加') {
       // 进入部分选择
       state.step = 'select_partial';
+      this.stateManager.updateState(sessionId, state);
       return {
         type: 'select',
         message: OpenClawFormatter.formatPartialSelection(state.data.currentResult.tags)
@@ -188,6 +195,7 @@ class OpenClawHandler {
     if (input === '3' || input === '手动输入') {
       // 进入手动输入
       state.step = 'input_manual';
+      this.stateManager.updateState(sessionId, state);
       const doc = state.data.currentDoc;
       return {
         type: 'input',
@@ -219,6 +227,7 @@ class OpenClawHandler {
     if (input === '0' || input === '返回') {
       // 返回确认界面
       state.step = 'confirm_tags';
+      this.stateManager.updateState(sessionId, state);
       return {
         type: 'confirm',
         message: OpenClawFormatter.formatTagConfirmation(
@@ -257,6 +266,7 @@ class OpenClawHandler {
       // 如果有 AI 结果，返回确认界面
       if (state.data.currentResult) {
         state.step = 'confirm_tags';
+        this.stateManager.updateState(sessionId, state);
         return {
           type: 'confirm',
           message: OpenClawFormatter.formatTagConfirmation(
@@ -270,6 +280,7 @@ class OpenClawHandler {
       // 否则跳过
       state.data.currentIndex++;
       state.step = 'idle';
+      this.stateManager.updateState(sessionId, state);
       return this.processNextDoc(sessionId, state);
     }
     
@@ -298,7 +309,8 @@ class OpenClawHandler {
    * 写入标签并继续
    */
   async writeTagsAndContinue(sessionId, state, tags) {
-    const { scanner, cfg } = state.data;
+    const { cfg } = state.data;
+    const scanner = new Scanner(cfg.vaultPath);
     const doc = state.data.currentDoc;
     
     // 写入文档
@@ -322,6 +334,7 @@ class OpenClawHandler {
     // 处理下一个
     state.data.currentIndex++;
     state.step = 'idle';
+    this.stateManager.updateState(sessionId, state);
     
     return this.processNextDoc(sessionId, state);
   }

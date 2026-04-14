@@ -17,6 +17,8 @@ AI-powered tagging system for Obsidian notes with tag management and synchroniza
 npm install -g @tengshao/ola
 ```
 
+Requires Node.js 18 or newer.
+
 ## Usage
 
 ### First-time Setup

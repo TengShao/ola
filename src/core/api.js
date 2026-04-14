@@ -239,13 +239,7 @@ class OlaAPI {
     for (const docInfo of docs) {
       const fullPath = path.join(this.scanner.vaultPath, docInfo.path);
       const content = this.scanner.readDoc(fullPath);
-      
-      // 替换标签（处理 # 前缀）
-      const oldTagName = oldTag.startsWith('#') ? oldTag.slice(1) : oldTag;
-      const newTagName = newTag.startsWith('#') ? newTag : '#' + newTag;
-      const oldPattern = new RegExp(`#${oldTagName}\\b`, 'g');
-      const newContent = content.replace(oldPattern, newTagName);
-      
+      const newContent = this.scanner.renameTagInDoc(content, oldTag, newTag);
       this.scanner.writeDoc(fullPath, newContent);
     }
 

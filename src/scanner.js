@@ -66,30 +66,59 @@ class Scanner {
     fs.writeFileSync(filePath, content);
   }
 
+  normalizeTag(tag) {
+    return tag.startsWith('#') ? tag.trim() : `#${tag.trim()}`;
+  }
+
+  escapeRegex(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  getTagTokenRegex() {
+    return /(^|[^\p{L}\p{N}_/])(#(?:[\p{L}\p{N}_-]+(?:\/[\p{L}\p{N}_-]+)*))/gu;
+  }
+
+  extractTagsFromText(text) {
+    const tags = [];
+
+    for (const match of text.matchAll(this.getTagTokenRegex())) {
+      tags.push(match[2]);
+    }
+
+    return [...new Set(tags)];
+  }
+
   extractExistingTags(content) {
-    const tagRegex = /#\w+/g;
-    const matches = content.match(tagRegex) || [];
-    return [...new Set(matches)];
+    return this.extractTagsFromText(content);
   }
 
   hasTagSection(content) {
-    return content.includes('**标签：**');
+    return this.getTagSectionMatch(content) !== null;
+  }
+
+  getTagSectionMatch(content) {
+    return content.match(/(\*\*(?:标签[：:]|Tags:)\*\*\s*)([^\n]*)/i);
+  }
+
+  buildTagSectionLine(prefix, tags) {
+    return `${prefix}${tags.join(' ')}`;
   }
 
   addTagsToDoc(content, tags, position = 'tail') {
     // 检查是否已有标签段
-    const tagSectionMatch = content.match(/\*\*标签：\*\*\s*([^\n]*)/);
+    const normalizedTags = [...new Set(tags.map(tag => this.normalizeTag(tag)))];
+    const tagSectionMatch = this.getTagSectionMatch(content);
     
     if (tagSectionMatch) {
       // 已有标签段，追加到现有标签
-      const existingTags = tagSectionMatch[1].trim().split(/\s+/).filter(t => t);
-      const allTags = [...new Set([...existingTags, ...tags])];
-      const newTagLine = `**标签：** ${allTags.join(' ')}`;
+      const existingTags = this.extractTagsFromText(tagSectionMatch[2]);
+      const allTags = [...new Set([...existingTags, ...normalizedTags])];
+      const newTagLine = this.buildTagSectionLine(tagSectionMatch[1], allTags);
       return content.replace(tagSectionMatch[0], newTagLine);
     }
     
     // 没有标签段，创建新的
-    const tagLine = `\n---\n\n**标签：** ${tags.join(' ')}\n`;
+    const tagLine = `\n---\n\n**标签：** ${normalizedTags.join(' ')}\n`;
     
     if (position === 'head') {
       return tagLine + '\n' + content;
@@ -104,9 +133,77 @@ class Scanner {
     return content.replace(oldTagLine, newTagLine);
   }
 
+  renameTagInDoc(content, oldTag, newTag) {
+    const normalizedOldTag = this.normalizeTag(oldTag);
+    const normalizedNewTag = this.normalizeTag(newTag);
+    const tagSectionMatch = this.getTagSectionMatch(content);
+
+    if (tagSectionMatch) {
+      const existingTags = this.extractTagsFromText(tagSectionMatch[2]);
+      const renamedTags = existingTags.map(tag =>
+        tag.toLowerCase() === normalizedOldTag.toLowerCase() ? normalizedNewTag : tag
+      );
+      const uniqueTags = [...new Set(renamedTags)];
+      const newTagLine = this.buildTagSectionLine(tagSectionMatch[1], uniqueTags);
+      return content.replace(tagSectionMatch[0], newTagLine);
+    }
+
+    const tagRegex = this.getTagTokenRegex();
+    return content.replace(tagRegex, (match, prefix, tag) => {
+      if (tag.toLowerCase() !== normalizedOldTag.toLowerCase()) {
+        return match;
+      }
+      return `${prefix}${normalizedNewTag}`;
+    });
+  }
+
+  removeEmptyTagSection(content, tagSectionMatch) {
+    const sectionText = tagSectionMatch[0];
+    const escapedSectionText = this.escapeRegex(sectionText);
+    const patterns = [
+      new RegExp(`\\n---\\n\\n${escapedSectionText}\\n?`, 'i'),
+      new RegExp(`^---\\n\\n${escapedSectionText}\\n?`, 'i'),
+      new RegExp(`${escapedSectionText}\\n?`, 'i')
+    ];
+
+    let nextContent = content;
+    for (const pattern of patterns) {
+      if (pattern.test(nextContent)) {
+        nextContent = nextContent.replace(pattern, '\n');
+        break;
+      }
+    }
+
+    return nextContent.replace(/\n{3,}/g, '\n\n').trimEnd();
+  }
+
   removeTagFromDoc(content, tagToRemove) {
-    const tagRegex = new RegExp(`#${tagToRemove.replace('#', '')}\\b`, 'g');
-    return content.replace(tagRegex, '').replace(/\s+/g, ' ').trim();
+    const normalizedTag = this.normalizeTag(tagToRemove);
+    const tagSectionMatch = this.getTagSectionMatch(content);
+
+    if (tagSectionMatch) {
+      const existingTags = this.extractTagsFromText(tagSectionMatch[2]);
+      const remainingTags = existingTags.filter(
+        tag => tag.toLowerCase() !== normalizedTag.toLowerCase()
+      );
+
+      if (remainingTags.length === 0) {
+        return this.removeEmptyTagSection(content, tagSectionMatch);
+      }
+
+      const newTagLine = this.buildTagSectionLine(tagSectionMatch[1], remainingTags);
+      return content.replace(tagSectionMatch[0], newTagLine);
+    }
+
+    const tagRegex = this.getTagTokenRegex();
+    return content
+      .replace(tagRegex, (match, prefix, tag) => {
+        if (tag.toLowerCase() !== normalizedTag.toLowerCase()) {
+          return match;
+        }
+        return prefix;
+      })
+      .replace(/[ \t]{2,}/g, ' ');
   }
 }
 
