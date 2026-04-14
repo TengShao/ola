@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+
 /**
  * Tagger 核心逻辑（适配器版本）
  * 与 UI 无关的纯业务逻辑
@@ -131,10 +134,7 @@ class TaggerCore {
     for (const docInfo of docs) {
       const fullPath = path.join(cfg.vaultPath, docInfo.path);
       const content = scanner.readDoc(fullPath);
-      const newContent = content.replace(
-        new RegExp(oldTag.replace('#', '\\#'), 'g'),
-        newTag
-      );
+      const newContent = scanner.renameTagInDoc(content, oldTag, newTag);
       scanner.writeDoc(fullPath, newContent);
     }
     
